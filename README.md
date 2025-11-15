@@ -9,9 +9,9 @@
 Complete control system implementation for a 5-level cascaded H-bridge multilevel inverter, progressing from STM32 microcontroller through FPGA to RISC-V and eventual ASIC implementation.
 
 ### Key Features
-- 🔌 **Power**: 400W, 80V RMS output, 2×40V DC input (2 H-bridges)
-- ⚡ **Topology**: 5 voltage levels (+2V, +V, 0, -V, -2V)
-- 🎛️ **Modulation**: Phase-shifted carrier PWM (180° between bridges)
+- 🔌 **Power**: 500W, 100V RMS output, 2×50V DC input (2 H-bridges)
+- ⚡ **Topology**: 5 voltage levels (+100V, +50V, 0, -50V, -100V)
+- 🎛️ **Modulation**: Level-shifted carrier PWM (carrier 1: -1 to 0, carrier 2: 0 to +1)
 - 📊 **Performance**: THD < 5%, 10kHz switching, 1μs dead-time
 - 🔧 **Platforms**: STM32 → FPGA → RISC-V → ASIC migration path
 - 🛡️ **Safety**: Overcurrent/overvoltage protection, UART debug monitoring
@@ -37,7 +37,7 @@ Complete control system implementation for a 5-level cascaded H-bridge multileve
 - **Hardware**: STM32F401RE Nucleo board
 - **Software**: STM32CubeIDE or ARM GCC toolchain
 - **Tools**: Oscilloscope, USB-Serial adapter (for debug)
-- **Power**: 2× Isolated 40V DC sources (start with 5-12V for testing!)
+- **Power**: 2× Isolated 50V DC sources (start with 5-12V for testing!)
 
 ### Installation
 
@@ -114,7 +114,7 @@ See `02-embedded/stm32/README.md` for detailed testing procedures.
 ### Minimum Setup
 - **STM32F401RE** Nucleo board (current implementation)
 - **2× H-bridge modules** with gate drivers (IR2110 or similar)
-- **2× 40V DC isolated power supplies**
+- **2× 50V DC isolated power supplies**
 - **8× Power MOSFETs** (IRFZ44N or equivalent)
 - **Oscilloscope** (2+ channels, ≥50MHz)
 - **USB-Serial adapter** for debug (optional but recommended)

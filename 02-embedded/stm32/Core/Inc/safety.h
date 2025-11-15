@@ -12,7 +12,7 @@
 
 /* Safety limits */
 #define MAX_CURRENT_A           15.0f    // Maximum output current
-#define MAX_VOLTAGE_V           100.0f   // Maximum output voltage
+#define MAX_VOLTAGE_V           125.0f   // Maximum output voltage (100V RMS + margin)
 #define MAX_TEMPERATURE_C       85.0f    // Maximum temperature
 #define FAULT_RESET_DELAY_MS    5000     // Delay before fault can be reset
 

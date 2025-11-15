@@ -1,6 +1,12 @@
 /**
  * @file multilevel_modulation.h
- * @brief Phase-shifted PWM modulation for 5-level cascaded H-bridge
+ * @brief Level-shifted PWM modulation for 5-level cascaded H-bridge
+ *
+ * LEVEL-SHIFTED CARRIER STRATEGY:
+ * - Carrier 1: Triangle wave from -1 to 0 (for H-bridge 1)
+ * - Carrier 2: Triangle wave from 0 to +1 (for H-bridge 2)
+ * - Reference: Sine wave from -1 to +1
+ * - Each carrier at same frequency but vertically offset
  *
  * @author 5-Level Inverter Project
  * @date 2025-11-15
@@ -39,8 +45,8 @@ typedef struct {
 } hbridge_duty_t;
 
 typedef struct {
-    hbridge_duty_t hbridge1;  // TIM1 - 0° phase
-    hbridge_duty_t hbridge2;  // TIM8 - 180° phase shift
+    hbridge_duty_t hbridge1;  // TIM1 - Level 1 (carrier -1 to 0)
+    hbridge_duty_t hbridge2;  // TIM8 - Level 2 (carrier 0 to +1)
 } inverter_duty_t;
 
 typedef struct {

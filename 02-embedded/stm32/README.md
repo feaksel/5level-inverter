@@ -6,9 +6,10 @@ Complete production-ready implementation for 5-level cascaded H-bridge multileve
 
 - **MCU**: STM32F401RE @ 84MHz
 - **Topology**: 2 Cascaded H-Bridges (8 switches) → 5 voltage levels
+- **DC Input**: 2× 50V isolated sources
+- **AC Output**: 100V RMS, 50Hz
 - **Switching**: 10kHz with 1μs dead-time
-- **Modulation**: Phase-shifted carriers (180° between bridges)
-- **Output**: 50Hz sine wave, adjustable modulation index
+- **Modulation**: Level-shifted carriers (carrier 1: -1 to 0, carrier 2: 0 to +1)
 - **Features**: UART debug, safety protection, 4 test modes
 
 ## Pin Mapping
@@ -93,7 +94,7 @@ Change `TEST_MODE` in main.c (line 20):
 ### 2. Low Voltage Test (Mode 1)
 ```bash
 1. Change TEST_MODE = 1, rebuild
-2. Use 5-12V DC supplies (NOT 40V!)
+2. Use 5-12V DC supplies (NOT 50V!)
 3. Connect H-bridge modules
 4. Open serial terminal @ 115200 baud
 5. Observe:
@@ -175,7 +176,7 @@ sBreakDeadTimeConfig.DeadTime = 168;  // For 2μs @ 84MHz
 ## Safety Features
 
 - **Overcurrent**: 15A limit (configurable in `safety.h`)
-- **Overvoltage**: 100V limit
+- **Overvoltage**: 125V limit (100V RMS + margin)
 - **Emergency Stop**: Immediate shutdown via `pwm_emergency_stop()`
 - **Fault Reset**: 5 second delay before faults can be cleared
 - **Status Monitoring**: Real-time fault reporting via UART
@@ -211,12 +212,12 @@ stm32/
 
 ## How It Works
 
-### Phase-Shifted PWM Strategy
-1. **TIM1** generates PWM for H-bridge 1 (0° carrier phase)
-2. **TIM8** generates PWM for H-bridge 2 (180° carrier phase)
-3. Both timers synchronized (TIM1 master, TIM8 slave triggered)
-4. Sine reference compared with phase-shifted carriers
-5. Result: Effective 20kHz switching at output (2× individual frequency)
+### Level-Shifted PWM Strategy
+1. **Carrier 1** (H-bridge 1): Triangle wave from -1 to 0 (lower level)
+2. **Carrier 2** (H-bridge 2): Triangle wave from 0 to +1 (upper level)
+3. **Reference**: Single sine wave from -1 to +1
+4. Each carrier at same frequency but different vertical position
+5. Natural 5-level synthesis by comparing reference with both carriers
 
 ### Execution Flow
 ```
@@ -226,8 +227,8 @@ Safety Check
   ↓
 Get Sine Sample from Lookup Table
   ↓
-Calculate H-Bridge 1 Duty (0° carrier)
-Calculate H-Bridge 2 Duty (180° carrier)
+Compare with Carrier 1 (-1 to 0) → H-Bridge 1 duty
+Compare with Carrier 2 (0 to +1) → H-Bridge 2 duty
   ↓
 Update PWM Registers
   ↓
@@ -235,11 +236,11 @@ Advance Sample Index
 ```
 
 ### 5 Voltage Levels Achieved
-- **+2Vdc**: Both bridges output +Vdc
-- **+Vdc**: One bridge +Vdc, other 0V
-- **0V**: Both output 0V (or +Vdc/-Vdc)
-- **-Vdc**: One bridge -Vdc, other 0V
-- **-2Vdc**: Both bridges output -Vdc
+- **+100V**: ref > 0, both bridges output +50V
+- **+50V**: 0 > ref, bridge 1 outputs +50V, bridge 2 outputs 0V
+- **0V**: ref crosses zero
+- **-50V**: ref < 0, bridge 1 outputs 0V, bridge 2 outputs -50V
+- **-100V**: ref < -1, both bridges output -50V
 
 ## Troubleshooting
 
