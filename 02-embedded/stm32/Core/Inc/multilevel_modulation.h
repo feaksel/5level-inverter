@@ -21,13 +21,14 @@
 
 /* Configuration */
 #define SYSTEM_CLOCK_HZ         84000000  // STM32F401 @ 84MHz
-#define PWM_FREQUENCY_HZ        10000     // Switching frequency
+#define PWM_FREQUENCY_HZ        5000      // Switching frequency
 #define OUTPUT_FREQUENCY_HZ     50        // Output sine wave frequency
 
 // PWM_PERIOD = (SYSTEM_CLOCK_HZ / PWM_FREQUENCY_HZ) - 1
+// For 5kHz:  (84000000 / 5000) - 1  = 16799
 // For 10kHz: (84000000 / 10000) - 1 = 8399
 // For 20kHz: (84000000 / 20000) - 1 = 4199
-#define PWM_PERIOD              8399
+#define PWM_PERIOD              16799
 
 #define SINE_TABLE_SIZE         200       // Full cycle samples
 
