@@ -14,10 +14,23 @@
 #include <stdbool.h>
 
 /* Configuration */
-#define PWM_FREQUENCY_HZ        10000
-#define OUTPUT_FREQUENCY_HZ     50
+#define SYSTEM_CLOCK_HZ         84000000  // STM32F401 @ 84MHz
+#define PWM_FREQUENCY_HZ        10000     // Switching frequency
+#define OUTPUT_FREQUENCY_HZ     50        // Output sine wave frequency
+
+// PWM_PERIOD = (SYSTEM_CLOCK_HZ / PWM_FREQUENCY_HZ) - 1
+// For 10kHz: (84000000 / 10000) - 1 = 8399
+// For 20kHz: (84000000 / 20000) - 1 = 4199
 #define PWM_PERIOD              8399
-#define SINE_TABLE_SIZE         200      // Full cycle samples
+
+#define SINE_TABLE_SIZE         200       // Full cycle samples
+
+/* IMPORTANT: To change switching frequency:
+ * 1. Change PWM_FREQUENCY_HZ above
+ * 2. Recalculate PWM_PERIOD using formula above
+ * 3. Update htim1.Init.Period in main.c (line ~238)
+ * 4. Update htim8.Init.Period in main.c (line ~300)
+ */
 
 /* Structures */
 typedef struct {
