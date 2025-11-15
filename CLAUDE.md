@@ -28,11 +28,11 @@ This project implements a complete control system for a **5-level cascaded H-bri
 
 ### Technical Specifications
 - **Power Output:** 400W, 80V RMS
-- **Input:** 4× 40V DC isolated sources
+- **Input:** 2× 40V DC isolated sources (2 H-bridges)
 - **Control:** Digital PR (Proportional-Resonant) current control + PI voltage control
 - **Switching Frequency:** 10 kHz
 - **Target THD:** < 5%
-- **Topology:** Cascaded H-Bridge with 4 independent cells
+- **Topology:** 2 Cascaded H-Bridges (8 switches) → 5 voltage levels (+2V, +V, 0, -V, -2V)
 
 ### Development Stages
 1. **✅ Stage 1: MATLAB/Simulink** - System modeling and control validation
@@ -44,10 +44,10 @@ This project implements a complete control system for a **5-level cascaded H-bri
 
 ### Current Focus
 The project is currently in **Stage 2** focusing on:
-- STM32F303 microcontroller implementation
-- PWM generation with dead-time insertion
-- Multi-channel synchronization
-- Real-time control algorithms
+- STM32F401RE microcontroller implementation
+- Dual-timer PWM generation (TIM1 + TIM8) with dead-time insertion
+- Timer synchronization for 2 H-bridges (8 switches total)
+- 5-level cascaded modulation strategy
 - Hardware abstraction layers for future portability
 
 ---
@@ -63,7 +63,7 @@ The project is currently in **Stage 2** focusing on:
 │   └── README.md
 │
 ├── 02-embedded/            # Microcontroller implementations
-│   ├── stm32/              # STM32F303 implementation (to be created)
+│   ├── stm32/              # STM32F401RE implementation
 │   │   ├── Core/           # STM32 HAL code
 │   │   ├── Inc/            # Header files
 │   │   ├── Src/            # Source files
@@ -220,11 +220,11 @@ sim('inverter_1')
 
 ### Current Platform (Stage 2)
 
-**Microcontroller:** STM32F303RE
-- ARM Cortex-M4F core @ 72 MHz
-- 512 KB Flash, 80 KB RAM
+**Microcontroller:** STM32F401RE
+- ARM Cortex-M4F core @ 84 MHz
+- 512 KB Flash, 96 KB RAM
 - FPU for floating-point operations
-- Advanced timers with complementary outputs
+- Advanced timers (TIM1, TIM8) with complementary outputs
 
 **Development Tools:**
 - **IDE:** STM32CubeIDE (primary) or VSCode + PlatformIO
@@ -645,7 +645,7 @@ open 07-docs/*.png
 - Task checklist: Referenced in main README
 
 **External:**
-- STM32F303 Reference Manual: [STM32F303xE Datasheet](https://www.st.com/resource/en/reference_manual/dm00043574.pdf)
+- STM32F401 Reference Manual: [STM32F401xE Datasheet](https://www.st.com/resource/en/datasheet/stm32f401re.pdf)
 - Application Notes: Dead-time insertion, current sensing
 - H-Bridge design guides
 - MISRA C guidelines
@@ -692,11 +692,12 @@ open 07-docs/*.png
 | PWM Period | 100 | μs |
 | Maximum ISR Execution | < 50 | μs |
 
-### MCU Resources (STM32F303)
+### MCU Resources (STM32F401RE)
 | Resource | Usage | Allocation |
 |----------|-------|------------|
-| Timer 1 | PWM Generation | 4 channels (complementary) |
-| ADC 1 | Current Sensing | 4 channels |
+| Timer 1 | H-Bridge 1 PWM (S1-S4) | CH1/CH1N, CH2/CH2N |
+| Timer 8 | H-Bridge 2 PWM (S5-S8) | CH1/CH1N, CH2/CH2N |
+| ADC 1 | Current Sensing | 2 channels |
 | ADC 2 | Voltage Sensing | 2 channels |
 | UART 2 | Debug/Communication | TX/RX |
 | DMA | ADC Transfer | 2 channels |
