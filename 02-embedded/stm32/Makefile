@@ -23,6 +23,10 @@ Core/Src/pwm_control.c \
 Core/Src/multilevel_modulation.c \
 Core/Src/safety.c \
 Core/Src/debug_uart.c \
+Core/Src/adc_sensing.c \
+Core/Src/data_logger.c \
+Core/Src/soft_start.c \
+Core/Src/pr_controller.c \
 Core/Src/stm32f4xx_it.c \
 Core/Src/system_stm32f4xx.c
 
