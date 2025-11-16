@@ -168,8 +168,7 @@ module soc_top_tb;
 
     initial begin
         // Initialize waveform dump
-        // Note: Writing to current directory instead of sim/ to avoid directory creation issues
-        $dumpfile("soc_top_tb.vcd");
+        $dumpfile("sim/soc_top_tb.vcd");
         $dumpvars(0, soc_top_tb);
         $dumpvars(0, dut.rom);
         $dumpvars(0, dut.ram);
@@ -375,7 +374,7 @@ module soc_top_tb;
     //==========================================================================
 
     initial begin
-        #50_000_000;  // 50 ms timeout (increased for comprehensive tests with debug output)
+        #10_000_000;  // 10 ms timeout (sufficient for comprehensive tests)
         $display("");
         $display("========================================");
         $display("ERROR: Simulation timeout!");
@@ -391,51 +390,19 @@ module soc_top_tb;
 
     // Monitor critical signals
     always @(posedge dut.clk) begin
-        // =========================================================
-        // Monitor ALL DBUS transactions (both reads and writes)
-        // =========================================================
-        if (dut.cpu_dbus_stb && dut.cpu_dbus_cyc) begin
-            if (dut.cpu_dbus_we) begin
-                // WRITE transaction
-                $display("[DBUS] WRITE ADDR=0x%08h DATA=0x%08h SEL=%04b at time %t",
-                        dut.cpu_dbus_addr, dut.cpu_dbus_dat_o, dut.cpu_dbus_sel, $time);
-
-                // Detailed logging for specific peripherals
-                if (dut.cpu_dbus_addr[31:8] == 24'h000205) begin
-                    // UART writes
-                    case (dut.cpu_dbus_addr[7:0])
-                        8'h00: $display("[UART] Write DATA = 0x%02h ('%c')",
-                                        dut.cpu_dbus_dat_o[7:0],
-                                        (dut.cpu_dbus_dat_o[7:0] >= 32 && dut.cpu_dbus_dat_o[7:0] < 127) ?
-                                        dut.cpu_dbus_dat_o[7:0] : ".");
-                        8'h08: $display("[UART] Write CTRL = 0x%08h", dut.cpu_dbus_dat_o);
-                        8'h0C: $display("[UART] Write BAUD_DIV = %0d", dut.cpu_dbus_dat_o);
-                    endcase
-                end else if (dut.cpu_dbus_addr >= 32'h00008000 && dut.cpu_dbus_addr < 32'h00018000) begin
-                    // RAM writes
-                    $display("[RAM]  Write to RAM[0x%08h] = 0x%08h",
-                            dut.cpu_dbus_addr, dut.cpu_dbus_dat_o);
-                end
-            end else begin
-                // READ transaction
-                $display("[DBUS] READ  ADDR=0x%08h SEL=%04b at time %t",
-                        dut.cpu_dbus_addr, dut.cpu_dbus_sel, $time);
-
-                if (dut.cpu_dbus_addr >= 32'h00008000 && dut.cpu_dbus_addr < 32'h00018000) begin
-                    $display("[RAM]  Read from RAM[0x%08h]", dut.cpu_dbus_addr);
-                end else if (dut.cpu_dbus_addr >= 32'h00000000 && dut.cpu_dbus_addr < 32'h00008000) begin
-                    $display("[ROM]  Read from ROM[0x%08h]", dut.cpu_dbus_addr);
-                end
-            end
+        // Monitor UART writes specifically
+        if (dut.cpu_dbus_stb && dut.cpu_dbus_we && (dut.cpu_dbus_addr[31:8] == 24'h000205)) begin
+            case (dut.cpu_dbus_addr[7:0])
+                8'h00: $display("[UART] Write DATA = 0x%02h ('%c') at time %t",
+                                dut.cpu_dbus_dat_o[7:0], dut.cpu_dbus_dat_o[7:0], $time);
+                8'h08: $display("[UART] Write CTRL = 0x%08h at time %t",
+                                dut.cpu_dbus_dat_o, $time);
+                8'h0C: $display("[UART] Write BAUD_DIV = %0d at time %t",
+                                dut.cpu_dbus_dat_o, $time);
+                default: $display("[UART] Write to offset 0x%02h = 0x%08h at time %t",
+                                dut.cpu_dbus_addr[7:0], dut.cpu_dbus_dat_o, $time);
+            endcase
         end
-
-        // Monitor DBUS read responses (acknowledgement)
-        if (dut.cpu_dbus_ack && !dut.cpu_dbus_we) begin
-            $display("[DBUS] READ  RESPONSE DATA=0x%08h at time %t",
-                    dut.cpu_dbus_dat_i, $time);
-        end
-
-        // Note: IBUS monitoring is already done in vexriscv_wrapper.v
 
         // Monitor UART TX state changes (only log transitions to reduce spam)
         // Comment this out to speed up simulation
