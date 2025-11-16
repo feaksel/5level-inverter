@@ -1,54 +1,47 @@
 /**
  * @file vexriscv_wrapper.v
- * @brief Wrapper for VexRiscv RISC-V Core
+ * @brief Wrapper for VexRiscv RISC-V Core with Wishbone Bus Adapters
  *
  * This module wraps the VexRiscv RISC-V core and provides:
- * - Wishbone bus interface conversion
+ * - VexRiscv cmd/rsp to Wishbone bus conversion (ibus + dbus)
  * - Interrupt handling
- * - Reset management
+ * - Reset polarity conversion (active-low to active-high)
  *
- * IMPORTANT: You must obtain the VexRiscv core separately!
+ * VexRiscv Bus Protocol:
+ * ----------------------
+ * VexRiscv uses a simple cmd/rsp handshaking protocol, NOT Wishbone:
  *
- * VexRiscv is a RISC-V core written in SpinalHDL (Scala).
- * To generate the Verilog for VexRiscv:
+ * Instruction Bus (iBus):
+ *   - cmd: valid/ready handshake with PC address
+ *   - rsp: valid signal with instruction data
  *
- * 1. Install SpinalHDL (requires Java and SBT):
- *    https://github.com/SpinalHDL/SpinalHDL
+ * Data Bus (dBus):
+ *   - cmd: valid/ready handshake with wr, mask, address, data
+ *   - rsp: ready signal with response data and error
  *
- * 2. Clone VexRiscv repository:
- *    git clone https://github.com/SpinalHDL/VexRiscv.git
+ * This wrapper converts these to standard Wishbone B4 pipelined protocol
+ * for compatibility with the rest of the SoC.
  *
- * 3. Generate the core (recommended configuration):
- *    cd VexRiscv
- *    sbt "runMain vexriscv.demo.GenSmallest"
+ * Bus Architecture Decision:
+ * --------------------------
+ * We use Wishbone throughout the SoC because:
+ * 1. Industry standard, well-documented
+ * 2. All peripherals already use Wishbone
+ * 3. ASIC-ready and silicon-proven
+ * 4. Easier portability for Stage 5-6 (RISC-V ASIC)
  *
- *    This generates: VexRiscv.v (or use GenCustom for specific config)
- *
- * 4. For this SoC, use configuration with:
- *    - RV32IMC (multiply, divide, compressed instructions)
- *    - Wishbone bus interface
- *    - External interrupt support
- *    - 5-stage pipeline
- *
- * 5. Copy generated VexRiscv.v to this directory:
- *    cp VexRiscv.v 02-embedded/riscv-soc/rtl/cpu/
- *
- * Alternative: Pre-built cores
- * - Download from VexRiscv releases (GitHub)
- * - Use community configurations
- *
- * Configuration Used:
- * ------------------
- * - ISA: RV32IMC
- * - Bus: Wishbone (instruction + data)
+ * VexRiscv Configuration:
+ * -----------------------
+ * - ISA: RV32IMC (multiply, divide, compressed instructions)
+ * - Bus: Simple cmd/rsp (converted to Wishbone here)
  * - Pipeline: 5-stage (Fetch, Decode, Execute, Memory, Writeback)
- * - Features: Hardware multiply/divide, compressed instructions
  * - Size: ~1,500 LUTs on FPGA
  * - Performance: ~1.5 DMIPS/MHz
- * - Interrupts: External interrupt input
+ * - ASIC-proven: Taped out in 180nm, 130nm, and advanced nodes
  *
- * For ASIC: VexRiscv has been successfully taped out in multiple
- * projects. The core is proven in 180nm, 130nm, and advanced nodes.
+ * @author RISC-V SoC Team
+ * @date 2024-11-16
+ * @version 2.0 - Full VexRiscv integration with bus adapters
  */
 
 module vexriscv_wrapper (
@@ -78,76 +71,183 @@ module vexriscv_wrapper (
 );
 
     //==========================================================================
+    // Reset Conversion
+    //==========================================================================
+
+    // VexRiscv uses active-high reset, we use active-low
+    wire reset = !rst_n;
+
+    //==========================================================================
+    // VexRiscv Native Bus Signals
+    //==========================================================================
+
+    // Instruction Bus (cmd/rsp protocol)
+    wire        vex_ibus_cmd_valid;
+    wire        vex_ibus_cmd_ready;
+    wire [31:0] vex_ibus_cmd_payload_pc;
+    wire        vex_ibus_rsp_valid;
+    wire        vex_ibus_rsp_payload_error;
+    wire [31:0] vex_ibus_rsp_payload_inst;
+
+    // Data Bus (cmd/rsp protocol)
+    wire        vex_dbus_cmd_valid;
+    wire        vex_dbus_cmd_ready;
+    wire        vex_dbus_cmd_payload_wr;
+    wire [3:0]  vex_dbus_cmd_payload_mask;
+    wire [31:0] vex_dbus_cmd_payload_address;
+    wire [31:0] vex_dbus_cmd_payload_data;
+    wire [1:0]  vex_dbus_cmd_payload_size;
+    wire        vex_dbus_rsp_ready;
+    wire        vex_dbus_rsp_error;
+    wire [31:0] vex_dbus_rsp_data;
+
+    //==========================================================================
     // VexRiscv Core Instantiation
     //==========================================================================
 
-    /**
-     * PLACEHOLDER: VexRiscv core instantiation
-     *
-     * Once you have generated VexRiscv.v, instantiate it here.
-     * The exact port names depend on your VexRiscv configuration.
-     *
-     * Typical VexRiscv ports (Wishbone variant):
-     *
-     * VexRiscv cpu (
-     *     .clk(clk),
-     *     .reset(!rst_n),  // VexRiscv uses active-high reset
-     *
-     *     // Instruction bus
-     *     .iBusWishbone_ADR(ibus_addr),
-     *     .iBusWishbone_DAT_MISO(ibus_dat_i),
-     *     .iBusWishbone_DAT_MOSI(),  // Not used for instruction fetch
-     *     .iBusWishbone_SEL(4'hF),
-     *     .iBusWishbone_CYC(ibus_cyc),
-     *     .iBusWishbone_STB(ibus_stb),
-     *     .iBusWishbone_ACK(ibus_ack),
-     *     .iBusWishbone_WE(1'b0),    // Read-only
-     *     .iBusWishbone_ERR(1'b0),
-     *
-     *     // Data bus
-     *     .dBusWishbone_ADR(dbus_addr),
-     *     .dBusWishbone_DAT_MISO(dbus_dat_i),
-     *     .dBusWishbone_DAT_MOSI(dbus_dat_o),
-     *     .dBusWishbone_SEL(dbus_sel),
-     *     .dBusWishbone_CYC(dbus_cyc),
-     *     .dBusWishbone_STB(dbus_stb),
-     *     .dBusWishbone_ACK(dbus_ack),
-     *     .dBusWishbone_WE(dbus_we),
-     *     .dBusWishbone_ERR(dbus_err),
-     *
-     *     // Interrupts
-     *     .externalInterrupt(|external_interrupt),
-     *     .timerInterrupt(1'b0),      // Use external timer
-     *     .softwareInterrupt(1'b0)
-     * );
-     */
+    VexRiscv cpu (
+        .clk(clk),
+        .reset(reset),
+
+        // Instruction bus (native cmd/rsp interface)
+        .iBus_cmd_valid(vex_ibus_cmd_valid),
+        .iBus_cmd_ready(vex_ibus_cmd_ready),
+        .iBus_cmd_payload_pc(vex_ibus_cmd_payload_pc),
+        .iBus_rsp_valid(vex_ibus_rsp_valid),
+        .iBus_rsp_payload_error(vex_ibus_rsp_payload_error),
+        .iBus_rsp_payload_inst(vex_ibus_rsp_payload_inst),
+
+        // Data bus (native cmd/rsp interface)
+        .dBus_cmd_valid(vex_dbus_cmd_valid),
+        .dBus_cmd_ready(vex_dbus_cmd_ready),
+        .dBus_cmd_payload_wr(vex_dbus_cmd_payload_wr),
+        .dBus_cmd_payload_mask(vex_dbus_cmd_payload_mask),
+        .dBus_cmd_payload_address(vex_dbus_cmd_payload_address),
+        .dBus_cmd_payload_data(vex_dbus_cmd_payload_data),
+        .dBus_cmd_payload_size(vex_dbus_cmd_payload_size),
+        .dBus_rsp_ready(vex_dbus_rsp_ready),
+        .dBus_rsp_error(vex_dbus_rsp_error),
+        .dBus_rsp_data(vex_dbus_rsp_data),
+
+        // Interrupts
+        .timerInterrupt(1'b0),           // Use external timer peripheral
+        .externalInterrupt(|external_interrupt),  // Any interrupt bit
+        .softwareInterrupt(1'b0)          // Not used in this SoC
+    );
 
     //==========================================================================
-    // TEMPORARY: Stub Implementation for Synthesis
+    // Instruction Bus: VexRiscv cmd/rsp to Wishbone Adapter
     //==========================================================================
 
     /**
-     * This stub allows the SoC to synthesize without VexRiscv.
-     * Replace this entire section once you have VexRiscv.v
+     * VexRiscv iBus protocol:
+     *   1. CPU asserts cmd_valid with PC
+     *   2. Wait for cmd_ready (bus available)
+     *   3. Bus responds with rsp_valid + instruction data
      *
-     * REMOVE THIS SECTION WHEN INTEGRATING ACTUAL VexRiscv!
+     * Wishbone protocol:
+     *   1. Master asserts CYC + STB with address
+     *   2. Wait for ACK
+     *   3. Data is valid when ACK is high
+     *
+     * Conversion: Simple state machine to bridge the two protocols
      */
 
-    // Instruction bus - just read from address 0
-    assign ibus_addr = 32'h0000_0000;
-    assign ibus_cyc  = 1'b1;
-    assign ibus_stb  = 1'b1;
+    reg ibus_active;  // Wishbone transaction in progress
 
-    // Data bus - idle
-    assign dbus_addr   = 32'h0;
-    assign dbus_dat_o  = 32'h0;
-    assign dbus_we     = 1'b0;
-    assign dbus_sel    = 4'h0;
-    assign dbus_cyc    = 1'b0;
-    assign dbus_stb    = 1'b0;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            ibus_active <= 1'b0;
+        end else begin
+            if (vex_ibus_cmd_valid && !ibus_active) begin
+                // Start new Wishbone transaction
+                ibus_active <= 1'b1;
+            end else if (ibus_ack) begin
+                // Wishbone transaction complete
+                ibus_active <= 1'b0;
+            end
+        end
+    end
+
+    // Wishbone outputs
+    assign ibus_addr = vex_ibus_cmd_payload_pc;
+    assign ibus_cyc  = ibus_active;
+    assign ibus_stb  = ibus_active;
+
+    // VexRiscv inputs
+    assign vex_ibus_cmd_ready = !ibus_active;  // Ready when no transaction active
+    assign vex_ibus_rsp_valid = ibus_ack;      // Response valid when ack
+    assign vex_ibus_rsp_payload_inst = ibus_dat_i;
+    assign vex_ibus_rsp_payload_error = 1'b0;  // No error support on ibus
+
+    //==========================================================================
+    // Data Bus: VexRiscv cmd/rsp to Wishbone Adapter
+    //==========================================================================
 
     /**
-     * END OF STUB - REMOVE WHEN ADDING REAL VexRiscv
+     * VexRiscv dBus protocol:
+     *   1. CPU asserts cmd_valid with wr, mask, address, data
+     *   2. Wait for cmd_ready
+     *   3. CPU asserts rsp_ready to accept response
+     *   4. Bus provides rsp_data and rsp_error
+     *
+     * Wishbone protocol:
+     *   1. Master asserts CYC + STB + WE with address, data, sel
+     *   2. Wait for ACK
+     *   3. Data/error valid when ACK is high
+     *
+     * Conversion: State machine for proper handshaking
      */
+
+    reg dbus_active;  // Wishbone transaction in progress
+
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            dbus_active <= 1'b0;
+        end else begin
+            if (vex_dbus_cmd_valid && !dbus_active) begin
+                // Start new Wishbone transaction
+                dbus_active <= 1'b1;
+            end else if (dbus_ack || dbus_err) begin
+                // Wishbone transaction complete
+                dbus_active <= 1'b0;
+            end
+        end
+    end
+
+    // Wishbone outputs
+    assign dbus_addr   = vex_dbus_cmd_payload_address;
+    assign dbus_dat_o  = vex_dbus_cmd_payload_data;
+    assign dbus_we     = vex_dbus_cmd_payload_wr;
+    assign dbus_sel    = vex_dbus_cmd_payload_mask;
+    assign dbus_cyc    = dbus_active;
+    assign dbus_stb    = dbus_active;
+
+    // VexRiscv inputs
+    assign vex_dbus_cmd_ready = !dbus_active;   // Ready when no transaction active
+    assign vex_dbus_rsp_ready = dbus_ack || dbus_err;  // Response when ack or error
+    assign vex_dbus_rsp_data  = dbus_dat_i;
+    assign vex_dbus_rsp_error = dbus_err;
+
+    //==========================================================================
+    // Debug/Verification (optional, can be removed for production)
+    //==========================================================================
+
+    // Synthesis-time checks (removed by synthesis tools)
+    // synthesis translate_off
+    always @(posedge clk) begin
+        if (ibus_cyc && ibus_ack) begin
+            $display("[IBUS] PC=0x%08x INST=0x%08x", ibus_addr, ibus_dat_i);
+        end
+        if (dbus_cyc && dbus_ack) begin
+            if (dbus_we)
+                $display("[DBUS] WRITE ADDR=0x%08x DATA=0x%08x SEL=%b",
+                         dbus_addr, dbus_dat_o, dbus_sel);
+            else
+                $display("[DBUS] READ  ADDR=0x%08x DATA=0x%08x",
+                         dbus_addr, dbus_dat_i);
+        end
+    end
+    // synthesis translate_on
 
 endmodule
