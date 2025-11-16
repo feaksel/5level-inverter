@@ -3,8 +3,9 @@
 # ==============================================================================
 
 # RISC-V toolchain
-# Note: riscv64-unknown-elf-gcc can compile for 32-bit targets with -march=rv32imc
-PREFIX = riscv64-unknown-elf-
+# Note: Using xPack RISC-V GCC toolchain
+TOOLCHAIN_PATH = /c/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin
+PREFIX = $(TOOLCHAIN_PATH)/riscv-none-elf-
 
 CC = $(PREFIX)gcc
 AS = $(PREFIX)as
@@ -14,7 +15,9 @@ OBJDUMP = $(PREFIX)objdump
 SIZE = $(PREFIX)size
 
 # Target architecture
-ARCH = rv32imc
+# NOTE: VexRiscv core does NOT support compressed instructions (RV32C)
+# Use rv32im (no 'c') to generate only 32-bit instructions
+ARCH = rv32im
 ABI = ilp32
 
 # Compiler flags
@@ -43,6 +46,7 @@ TARGET = firmware
 ELF = $(TARGET).elf
 BIN = $(TARGET).bin
 HEX = $(TARGET).hex
+MEM = $(TARGET).mem
 LST = $(TARGET).lst
 MAP = $(TARGET).map
 
@@ -52,7 +56,7 @@ MAP = $(TARGET).map
 
 .PHONY: all clean info
 
-all: $(HEX) $(BIN) $(LST)
+all: $(MEM) $(HEX) $(BIN) $(LST)
 	@echo ""
 	@echo "====================================="
 	@echo "Firmware build complete!"
@@ -60,6 +64,7 @@ all: $(HEX) $(BIN) $(LST)
 	@echo "ELF:  $(ELF)"
 	@echo "BIN:  $(BIN)"
 	@echo "HEX:  $(HEX)"
+	@echo "MEM:  $(MEM)"
 	@echo "LST:  $(LST)"
 	@echo "MAP:  $(MAP)"
 	@echo ""
@@ -91,6 +96,11 @@ $(HEX): $(ELF)
 	@echo "Generating hex file..."
 	$(OBJCOPY) -O verilog $< $@
 
+# Generate mem file (for Verilog $readmemh)
+$(MEM): $(HEX)
+	@echo "Converting to $readmemh format..."
+	@python3 hex2mem.py $(HEX) $(MEM)
+
 # Generate listing
 $(LST): $(ELF)
 	@echo "Generating listing..."
@@ -111,7 +121,7 @@ info: $(ELF)
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	rm -f $(OBJS) $(ELF) $(BIN) $(HEX) $(LST) $(MAP)
+	rm -f $(OBJS) $(ELF) $(BIN) $(HEX) $(MEM) $(LST) $(MAP)
 	@echo "Clean complete."
 
 # ==============================================================================

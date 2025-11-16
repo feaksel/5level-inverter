@@ -1,0 +1,24 @@
+# compile verilog/system verilog design source files
+verilog xil_defaultlib  --include "../../../../../../../../../../../Xilinx/2025.1/Vivado/data/rsb/busdef" \
+"../../../../../rtl/cpu/VexRiscv.v" \
+"../../../../../rtl/peripherals/adc_interface.v" \
+"../../../../../rtl/utils/carrier_generator.v" \
+"../../../../../rtl/peripherals/gpio.v" \
+"../../../../../rtl/peripherals/protection.v" \
+"../../../../../rtl/peripherals/pwm_accelerator.v" \
+"../../../../../rtl/utils/pwm_comparator.v" \
+"../../../../../rtl/memory/ram_64kb.v" \
+"../../../../../rtl/memory/rom_32kb.v" \
+"../../../../../rtl/utils/sine_generator.v" \
+"../../../../../rtl/soc_top.v" \
+"../../../../../rtl/peripherals/timer.v" \
+"../../../../../rtl/peripherals/uart.v" \
+"../../../../../rtl/cpu/vexriscv_wrapper.v" \
+"../../../../../rtl/bus/wishbone_interconnect.v" \
+"../../../../../tb/soc_top_tb.v" \
+
+# compile glbl module
+verilog xil_defaultlib "glbl.v"
+
+# Do not sort compile order
+nosort

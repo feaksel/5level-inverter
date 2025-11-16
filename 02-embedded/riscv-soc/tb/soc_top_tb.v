@@ -19,7 +19,7 @@ module soc_top_tb;
     // Parameters
     //==========================================================================
 
-    parameter CLK_PERIOD = 10;  // 100 MHz input clock
+    parameter CLK_PERIOD = 20;  // 50 MHz input clock (matches SoC CLK_FREQ parameter)
 
     //==========================================================================
     // Signals
@@ -52,6 +52,8 @@ module soc_top_tb;
     // Test control
     integer test_cycle = 0;
     integer uart_chars_received = 0;
+    reg [15:0] gpio_prev;
+    integer blink_count;
 
     //==========================================================================
     // DUT Instantiation
@@ -193,35 +195,49 @@ module soc_top_tb;
         #500;
 
         //======================================================================
-        // Test 1: Basic SoC Operation
+        // Test 1: Firmware Execution and GPIO Status
         //======================================================================
         $display("\n========================================");
-        $display("Test 1: Basic SoC Operation");
+        $display("Test 1: Firmware Execution");
         $display("========================================");
 
-        // Check that clock is running
-        #1000;
-        $display("  [INFO] 50 MHz system clock active");
-        $display("  [INFO] LED[0] (power): %b", led[0]);
+        // Wait for firmware to complete tests (~5000 cycles)
+        #50000;  // 50us @ 50MHz = 2500 cycles
+        $display("  [INFO] GPIO status: 0x%04h", gpio);
+        $display("  [INFO] LED status: 0x%01h", led);
 
-        // CPU should start executing from ROM
-        // (This requires actual VexRiscv core and firmware)
-        $display("  [INFO] CPU should be fetching from ROM at 0x00000000");
+        // Check test results from GPIO
+        if (gpio[7]) begin
+            $display("  [PASS] All firmware tests completed (GPIO[7]=1)");
+            if (gpio[4]) $display("  [PASS]   - RAM test passed (GPIO[4]=1)");
+            if (gpio[5]) $display("  [PASS]   - GPIO test passed (GPIO[5]=1)");
+            if (gpio[6]) $display("  [PASS]   - UART test passed (GPIO[6]=1)");
+            $display("  [INFO]   - Test counter: %0d", gpio[3:0]);
+        end else begin
+            $display("  [WARN] Tests not complete yet or failed (GPIO[7]=0)");
+            $display("  [INFO]   - Test counter: %0d", gpio[3:0]);
+            $display("  [INFO]   - RAM test: %s", gpio[4] ? "PASS" : "FAIL");
+            $display("  [INFO]   - GPIO test: %s", gpio[5] ? "PASS" : "FAIL");
+            $display("  [INFO]   - UART test: %s", gpio[6] ? "PASS" : "FAIL");
+        end
 
         //======================================================================
-        // Test 2: PWM Output Monitoring
+        // Test 2: UART Output Verification
         //======================================================================
         $display("\n========================================");
-        $display("Test 2: PWM Output Monitoring");
+        $display("Test 2: UART Output");
         $display("========================================");
 
-        // Initially PWM should be disabled (firmware not running)
-        #10000;
-        $display("  [INFO] PWM outputs: 0x%02h", pwm_out);
+        // Wait a bit more for UART transmission
+        #10000;  // 10us should be enough for "TEST\n" @ 115200 baud
 
-        // If firmware runs and enables PWM, we should see activity
-        #100000;
-        $display("  [INFO] PWM outputs after 100us: 0x%02h", pwm_out);
+        if (uart_chars_received >= 4) begin
+            $display("  [PASS] Received %0d UART characters (expected: TEST\\n)", uart_chars_received);
+        end else if (uart_chars_received > 0) begin
+            $display("  [WARN] Received %0d UART characters (expected 5)", uart_chars_received);
+        end else begin
+            $display("  [INFO] No UART output detected yet");
+        end
 
         //======================================================================
         // Test 3: Protection System
@@ -290,26 +306,38 @@ module soc_top_tb;
         $display("  [INFO] LED[3] (interrupt active): %b", led[3]);
 
         //======================================================================
-        // Test 7: Long-term Stability
+        // Test 7: Verify Success Loop (Blink Pattern)
         //======================================================================
         $display("\n========================================");
-        $display("Test 7: Long-term Stability");
+        $display("Test 7: Success Loop Verification");
         $display("========================================");
 
-        $display("  [INFO] Running for extended period...");
-        repeat (100) begin
-            #10000;
-            test_cycle = test_cycle + 1;
-            if (test_cycle % 10 == 0) begin
-                $display("  [%0t] Cycle %0d: PWM=0x%02h LED=0x%01h",
-                         $time, test_cycle, pwm_out, led);
+        $display("  [INFO] Monitoring GPIO blink pattern...");
+
+        // Monitor for a few blink cycles (firmware toggles bit 8)
+        blink_count = 0;
+
+        gpio_prev = gpio;
+        repeat (3) begin
+            #100000;  // Wait for blink toggle
+            if (gpio[8] != gpio_prev[8]) begin
+                blink_count = blink_count + 1;
+                $display("  [INFO] Blink detected: GPIO changed from 0x%04h to 0x%04h",
+                         gpio_prev, gpio);
             end
+            gpio_prev = gpio;
+        end
+
+        if (blink_count >= 2) begin
+            $display("  [PASS] Success loop confirmed (blink count: %0d)", blink_count);
+        end else begin
+            $display("  [INFO] Limited blink activity detected");
         end
 
         //======================================================================
         // Test Complete
         //======================================================================
-        #10000;
+        #1000;
 
         $display("");
         $display("========================================");
@@ -318,12 +346,21 @@ module soc_top_tb;
         $display("Simulation time: %0t", $time);
         $display("UART characters received: %0d", uart_chars_received);
         $display("");
-        $display("NOTE: Full functionality requires:");
-        $display("  1. VexRiscv core (rtl/cpu/VexRiscv.v)");
-        $display("  2. Compiled firmware (firmware/firmware.hex)");
-        $display("");
-        $display("Without these, only peripheral connectivity");
-        $display("and basic infrastructure can be verified.");
+
+        // Overall test summary
+        if (gpio[7] && (uart_chars_received >= 4) && (blink_count >= 2)) begin
+            $display("✓✓✓ ALL TESTS PASSED! ✓✓✓");
+            $display("  - Firmware executed successfully");
+            $display("  - All peripheral tests passed");
+            $display("  - UART communication working");
+            $display("  - CPU in stable success loop");
+        end else begin
+            $display("Test Summary:");
+            $display("  - Firmware tests: %s", gpio[7] ? "PASS" : "INCOMPLETE/FAIL");
+            $display("  - UART output: %s", (uart_chars_received >= 4) ? "PASS" : "FAIL");
+            $display("  - Success loop: %s", (blink_count >= 2) ? "PASS" : "FAIL");
+        end
+
         $display("");
         $display("✓ Testbench completed successfully!");
         $display("========================================");
@@ -337,11 +374,13 @@ module soc_top_tb;
     //==========================================================================
 
     initial begin
-        #200_000_000;  // 200 ms timeout
+        #10_000_000;  // 10 ms timeout (sufficient for comprehensive tests)
         $display("");
         $display("========================================");
         $display("ERROR: Simulation timeout!");
         $display("========================================");
+        $display("Current GPIO status: 0x%04h", gpio);
+        $display("Test progress (GPIO[3:0]): %0d", gpio[3:0]);
         $finish;
     end
 
@@ -351,10 +390,25 @@ module soc_top_tb;
 
     // Monitor critical signals
     always @(posedge dut.clk) begin
-        // Uncomment for detailed bus monitoring
-        // if (dut.cpu_dbus_stb && dut.cpu_dbus_ack) begin
-        //     $display("  [BUS] DBUS: addr=0x%08h data=0x%08h we=%b",
-        //              dut.cpu_dbus_addr, dut.cpu_dbus_dat_i, dut.cpu_dbus_we);
+        // Monitor UART writes specifically
+        if (dut.cpu_dbus_stb && dut.cpu_dbus_we && (dut.cpu_dbus_addr[31:8] == 24'h000205)) begin
+            case (dut.cpu_dbus_addr[7:0])
+                8'h00: $display("[UART] Write DATA = 0x%02h ('%c') at time %t",
+                                dut.cpu_dbus_dat_o[7:0], dut.cpu_dbus_dat_o[7:0], $time);
+                8'h08: $display("[UART] Write CTRL = 0x%08h at time %t",
+                                dut.cpu_dbus_dat_o, $time);
+                8'h0C: $display("[UART] Write BAUD_DIV = %0d at time %t",
+                                dut.cpu_dbus_dat_o, $time);
+                default: $display("[UART] Write to offset 0x%02h = 0x%08h at time %t",
+                                dut.cpu_dbus_addr[7:0], dut.cpu_dbus_dat_o, $time);
+            endcase
+        end
+
+        // Monitor UART TX state changes (only log transitions to reduce spam)
+        // Comment this out to speed up simulation
+        // if (dut.uart_periph.tx_state != 0) begin
+        //     $display("[UART] TX state = %0d, tx_data = 0x%02h, uart_tx = %b at time %t",
+        //             dut.uart_periph.tx_state, dut.uart_periph.tx_data, uart_tx, $time);
         // end
     end
 
