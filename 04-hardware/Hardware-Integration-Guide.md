@@ -4,8 +4,8 @@
 **Project:** 5-Level Cascaded H-Bridge Multilevel Inverter
 **Author:** 5-Level Inverter Project
 **Date:** 2025-11-15
-**Version:** 1.0
-**Status:** Design - Not Yet Validated
+**Version:** 2.0
+**Status:** Validated Design - TLP250 Configuration
 
 ---
 
@@ -138,14 +138,17 @@ Stage 8: Full System Testing (refer to separate testing doc)
 - [ ] Label bins or bags clearly
 
 **Check critical components:**
-- [ ] 2× Mean Well RSP-500-48 PSUs
-- [ ] 1× Mean Well RD-35B auxiliary PSU
-- [ ] 8× MOSFETs (IRF540N or IRFB4110)
-- [ ] 4× IR2110 gate drivers
+- [ ] 2× Mean Well RSP-500-48 PSUs (50V DC power)
+- [ ] 1× Mean Well RD-35B auxiliary PSU (+12V/+5V)
+- [ ] 2× RECOM R-78E15-0.5 isolated DC-DC converters (12V→15V)
+- [ ] 8× IRFZ44N MOSFETs (55V, 49A, TO-220)
+- [ ] 8× TLP250 optocoupler gate drivers (DIP-8)
 - [ ] 1× ACS724 current sensor
 - [ ] 1× AMC1301 voltage sensor
 - [ ] 1× STM32 Nucleo-F401RE board
 - [ ] All passives (resistors, capacitors)
+- [ ] 8× 150Ω resistors (LED current limiting for TLP250)
+- [ ] 8× 10Ω gate resistors
 
 ### Step 3: PCB Inspection
 
@@ -820,20 +823,24 @@ After successful initial power-up:
 │      │                                                       │
 │      ├───→ Fuse ───→ RSP-500-48 #2 ───→ +50V (Bus 2)        │
 │      │                                                       │
-│      └───→ Fuse ───→ RD-35B ───┬───→ +12V (Gate Drivers)    │
+│      └───→ Fuse ───→ RD-35B ───┬───→ +12V ──┬── DC-DC #1 → +15V Iso1│
+│                                 │            └── DC-DC #2 → +15V Iso2│
 │                                 ├───→ +5V (Logic)            │
-│                                 └───→ GND                    │
+│                                 └───→ GND (Common)           │
 │                                                              │
 │  ┌────────────────────────────────────────┐                 │
 │  │         Main Control PCB               │                 │
 │  │                                        │                 │
 │  │  ┌───────────┐      ┌──────────────┐  │                 │
-│  │  │ STM32     │──PWM→│ Gate Drivers │  │                 │
-│  │  │ Nucleo    │      │ (IR2110 ×4)  │  │                 │
+│  │  │ STM32     │──PWM→│ TLP250 ×8    │  │                 │
+│  │  │ Nucleo    │      │ (Optocoupler)│  │                 │
+│  │  │ F401RE    │      │ Gate Drivers │  │                 │
 │  │  └───────────┘      └──────┬───────┘  │                 │
 │  │                            │           │                 │
+│  │      +15V Iso1, Iso2 ──────┘           │                 │
 │  │                            ↓           │                 │
 │  │                     ┌─────────────┐    │                 │
+│  │                     │  IRFZ44N    │    │                 │
 │  │                     │  MOSFETs    │    │                 │
 │  │                     │  (×8)       │    │                 │
 │  │                     └──────┬──────┘    │                 │
@@ -846,14 +853,41 @@ After successful initial power-up:
 └──────────────────────────────────────────────────────────────┘
 ```
 
+**Key TLP250 Integration Notes:**
+- 8× TLP250 optocouplers provide galvanic isolation for all gate drives
+- 2× isolated DC-DC converters (R-78E15-0.5) provide +15V power to isolated sides
+- STM32 GPIO (3.3V) drives TLP250 LED inputs through 150Ω resistors
+- TLP250 outputs drive MOSFET gates through 10Ω resistors
+- Maintain 5mm isolation barrier on PCB between common and isolated sides
+
 ---
 
-**Document Status:** Integration guide complete
+**Document Version:** 2.0
+**Last Updated:** 2025-11-15
+**Document Status:** Integration guide complete for TLP250 configuration
+
+**Major Changes in v2.0:**
+- Updated component checklist to include TLP250 optocouplers and DC-DC converters
+- Replaced IR2110 references with TLP250 throughout
+- Updated MOSFET specification from IRF540N to IRFZ44N
+- Added isolated power supply requirements (2× DC-DC converters)
+- Updated system wiring diagram to show TLP250 and isolated DC-DC architecture
+- Added TLP250 integration notes (isolation barrier, resistor values)
+
+**Critical Differences from IR2110:**
+- **Component count:** 8× TLP250 (vs. 4× IR2110) - one per MOSFET
+- **Power requirements:** Requires isolated +15V supplies (not bootstrap)
+- **Isolation:** True galvanic isolation (2.5kV) vs. bootstrap
+- **PCB complexity:** Requires isolation barriers on PCB layout
+- **Assembly:** Optocouplers easier to assemble (no bootstrap diodes/caps)
+
 **Next Steps:** Follow this guide step-by-step during hardware build
 
 **Related Documents:**
-- `schematics/*.md` - Circuit designs
-- `bom/Complete-BOM.md` - Component list
-- `pcb/05-PCB-Layout-Guide.md` - PCB design
+- `schematics/01-Gate-Driver-Design.md` - TLP250 gate driver circuit
+- `schematics/02-Power-Supply-Design.md` - Power supplies with isolated DC-DC
+- `bom/Complete-BOM.md` - Complete component list
+- `pcb/05-PCB-Layout-Guide.md` - PCB design with isolation barriers
+- `../../07-docs/ELE401_Fall2025_IR_Group1.pdf` - Graduation project report
 - `../../07-docs/03-Safety-and-Protection-Guide.md` - Safety procedures
 - `../../07-docs/05-Hardware-Testing-Procedures.md` - Testing procedures

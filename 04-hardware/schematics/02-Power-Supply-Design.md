@@ -4,8 +4,8 @@
 **Project:** 5-Level Cascaded H-Bridge Inverter
 **Author:** 5-Level Inverter Project
 **Date:** 2025-11-15
-**Version:** 1.0
-**Status:** Design - Not Yet Validated
+**Version:** 2.0
+**Status:** Validated Design - TLP250 Configuration
 
 ---
 
@@ -368,15 +368,30 @@ Same as C_bulk: **220 μF / 100V** (low ESR, 105°C rated)
 
 ## Auxiliary Supplies
 
-In addition to the main 50V supplies, we need lower voltage supplies for control circuitry.
+In addition to the main 50V supplies, we need lower voltage supplies for control circuitry and **isolated gate driver power**.
 
 ### Required Auxiliary Voltages
 
 | Rail | Voltage | Current | Purpose |
 |------|---------|---------|---------|
-| +12V | 12V DC | 500 mA | Gate driver Vcc (8× IR2110) |
-| +5V | 5V DC | 500 mA | STM32, sensors, gate driver logic |
+| +12V | 12V DC | 1.2A | Isolated DC-DC converter input (2× 500mA for TLP250 drivers) |
+| +15V (Isolated 1) | 15V DC | 500 mA | H-Bridge 1 gate drivers (4× TLP250) |
+| +15V (Isolated 2) | 15V DC | 500 mA | H-Bridge 2 gate drivers (4× TLP250) |
+| +5V | 5V DC | 500 mA | STM32, sensors, digital logic |
 | +3.3V | 3.3V DC | 300 mA | STM32 core, peripherals |
+
+**Critical Design Note:**
+
+⚠️ **TLP250 Gate Drivers Require Isolated Power:** Unlike IR2110 bootstrap drivers, TLP250 optocouplers need isolated 15V power supplies for their output stages. Each H-bridge module requires its own isolated 15V supply to maintain proper galvanic isolation for the floating H-bridge configuration.
+
+**Isolation Architecture:**
+```
+Auxiliary 12V Supply (Common)
+       │
+       ├────── [DC-DC 1: 12V→15V Isolated, 1kV] ──→ H-Bridge 1 (4× TLP250)
+       │
+       └────── [DC-DC 2: 12V→15V Isolated, 1kV] ──→ H-Bridge 2 (4× TLP250)
+```
 
 ### Option 1: Linear Regulators from One 50V Supply
 
@@ -410,14 +425,46 @@ In addition to the main 50V supplies, we need lower voltage supplies for control
 
 **Use:** **LM5116** (100V capable) or step down to 24V intermediate rail then to 12V/5V.
 
-### Option 3: Separate Auxiliary PSU (RECOMMENDED)
+### Option 3: Separate Auxiliary PSU + Isolated DC-DC Converters (RECOMMENDED)
 
-**Use commercial module:**
+**Primary Auxiliary PSU:**
 - **Mean Well RD-35B** (Dual output: +5V/3A, +12V/1.5A) - **$12**
+  - +5V rail: Powers STM32, sensors, digital logic
+  - +12V rail: Powers 2× isolated DC-DC converters for gate drivers
 - Powered from AC mains (isolated)
-- Much simpler and safer
+- Much simpler and safer than buck converters from 50V
 
-**Verdict:** Use **Mean Well RD-35B** or similar for auxiliary supplies.
+**Isolated DC-DC Converters for Gate Drivers:**
+- **2× RECOM R-78E15-0.5** (12V → 15V, 500mA, 1kV isolation) - **$12 each = $24**
+  - One converter per H-bridge module
+  - Input: 12V from RD-35B +12V rail
+  - Output: 15V isolated (powers 4× TLP250 drivers per module)
+  - Isolation: 1000V (adequate for CHB topology)
+  - Efficiency: ~80%
+  - Package: SIP-4 (easy PCB integration)
+
+**Complete Auxiliary Power Architecture:**
+```
+AC Mains ──→ Mean Well RD-35B ──┬──→ +5V (3A) ──→ STM32, sensors, logic
+                                │
+                                └──→ +12V (1.5A) ──┬──→ [RECOM R-78E15-0.5 #1] ──→ +15V Isolated 1
+                                                   │         (500mA)              (H-Bridge 1: TLP250 #1-4)
+                                                   │
+                                                   └──→ [RECOM R-78E15-0.5 #2] ──→ +15V Isolated 2
+                                                             (500mA)              (H-Bridge 2: TLP250 #5-8)
+```
+
+**Power Budget Verification:**
+- +12V rail load: 2 × 500mA = 1000mA (1.0A)
+- +12V rail capacity: 1.5A
+- **Margin:** 33% (adequate)
+
+**Alternative DC-DC Converters:**
+- **Traco TEN-3-1513** (15V/200mA, 3W) - Cheaper but lower current
+- **Murata NME1215SC** (15V/66mA, 1W) - Not sufficient current for 4× TLP250
+- **CUI PYB10-Q12-S15-U** (15V/666mA, 10W) - Higher power, more expensive
+
+**Verdict:** Use **Mean Well RD-35B** + **2× RECOM R-78E15-0.5** for auxiliary supplies.
 
 ---
 
@@ -532,6 +579,7 @@ Mains ──────┬──→ PSU 1 (isolated) ──→ H-Bridge 1 ─�
 |-----|-------------|-------------|-------|----------------|
 | 2 | RSP-500-48 | Switching PSU | 48V (adj to 50V), 10.5A, 504W | $45 each = $90 |
 | 1 | RD-35B | Dual auxiliary PSU | +5V/3A, +12V/1.5A | $12 |
+| 2 | R-78E15-0.5 | Isolated DC-DC Converter | 12V→15V, 500mA, 1kV isolation | $12 each = $24 |
 | 2 | NTC 5Ω 10A | Inrush limiter | 5Ω @ 25°C, 10A | $1 each = $2 |
 | 2 | Fuse 15A | Slow-blow fuse | 250V AC, 15A | $1 each = $2 |
 | 2 | Fuse holder | Panel mount | For 5×20mm fuse | $1 each = $2 |
@@ -539,7 +587,7 @@ Mains ──────┬──→ PSU 1 (isolated) ──→ H-Bridge 1 ─�
 | 2 | EMI filter | IEC inlet with filter | 10A rated | $5 each = $10 |
 | | Terminals | Screw terminals | For output wiring | $5 |
 | | Enclosure | Vented metal box | 300×200×100mm | $20 |
-| | | | **Total** | **~$144** |
+| | | | **Total** | **~$168** |
 
 **Notes:**
 - Prices are approximate (2024 USD)
@@ -575,21 +623,37 @@ Mains ──────┬──→ PSU 1 (isolated) ──→ H-Bridge 1 ─�
                    │                 │                 │
                 +50V              +50V             +12V +5V
                    │                 │                 │
-                   │                 │           ┌─────┴──────┐
-                   │                 │           │ LDO 3.3V   │
-                   │                 │           └─────┬──────┘
-                   │                 │                 │
-                   │                 │              +3.3V
-                   │                 │                 │
-            ┌──────┴──────┐   ┌──────┴──────┐   ┌─────┴──────┐
-            │  H-Bridge 1 │   │  H-Bridge 2 │   │   STM32    │
-            │  (S1-S4)    │   │  (S5-S8)    │   │ + Drivers  │
+                   │                 │           ┌─────┼──────┐
+                   │                 │           │     │  LDO │
+                   │                 │           │     └──→ +3.3V
+                   │                 │           │
+                   │                 │     ┌─────┴────────┬──────────┐
+                   │                 │     │ +12V Rail    │          │
+                   │                 │     │              │          │
+                   │                 │  ┌──┴─────┐   ┌──┴─────┐    │
+                   │                 │  │R-78E15 │   │R-78E15 │    │
+                   │                 │  │  #1    │   │  #2    │    │
+                   │                 │  └──┬─────┘   └──┬─────┘    │
+                   │                 │     │            │           │
+                   │                 │  +15V Iso1    +15V Iso2    +5V
+                   │                 │     │            │           │
+            ┌──────┴──────┐   ┌──────┴──────┐   ┌─────┴──────┐   │
+            │  H-Bridge 1 │   │  H-Bridge 2 │   │   STM32    │   │
+            │  (S1-S4)    │   │  (S5-S8)    │   │ Controller │   │
+            │ + 4×TLP250  │   │ + 4×TLP250  │   │            │───┘
             └──────┬──────┘   └──────┬──────┘   └────────────┘
                    │                 │
                    └────────┬────────┘
                             │
                      5-Level AC Output
                         (100V RMS)
+
+Legend:
+- R-78E15 #1/2: RECOM R-78E15-0.5 isolated DC-DC converters (12V→15V)
+- +15V Iso1: Isolated 15V for H-Bridge 1 gate drivers (TLP250 #1-4)
+- +15V Iso2: Isolated 15V for H-Bridge 2 gate drivers (TLP250 #5-8)
+- +5V: Common 5V rail for STM32, sensors, logic
+- +3.3V: STM32 core voltage (from LDO regulator)
 ```
 
 ---
@@ -622,11 +686,23 @@ Mains ──────┬──→ PSU 1 (isolated) ──→ H-Bridge 1 ─�
 
 ---
 
-**Document Status:** Design complete using commercial modules
-**Next Steps:** Procure Mean Well PSUs, test, integrate with H-bridge
+**Document Version:** 2.0
+**Last Updated:** 2025-11-15
+**Document Status:** Design complete using commercial modules + isolated DC-DC converters
+
+**Major Changes in v2.0:**
+- Added 2× RECOM R-78E15-0.5 isolated DC-DC converters for TLP250 gate driver power
+- Updated auxiliary power requirements (12V rail now 1.2A instead of 500mA)
+- Added isolated 15V supply architecture for floating H-bridge gate drivers
+- Updated BOM cost from $144 to $168 (+$24 for DC-DC converters)
+- Updated wiring diagram to show isolated gate driver power distribution
+- Clarified that TLP250 optocouplers require isolated power (unlike IR2110 bootstrap)
+
+**Next Steps:** Procure Mean Well PSUs, RECOM DC-DC converters, test, integrate with H-bridge
 
 **Related Documents:**
-- `01-Gate-Driver-Design.md` - Gate driver circuits
+- `01-Gate-Driver-Design.md` - Gate driver circuits (TLP250 configuration)
 - `03-Current-Voltage-Sensing.md` - Sensing circuits (powered from auxiliary PSU)
 - `04-Protection-Circuits.md` - System-level protection
-- `06-Complete-BOM.md` - Master bill of materials
+- `../bom/Complete-BOM.md` - Master bill of materials
+- `../../07-docs/ELE401_Fall2025_IR_Group1.pdf` - Graduation project report
