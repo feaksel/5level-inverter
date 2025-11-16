@@ -1,0 +1,134 @@
+Time resolution is 1 ps
+[ROM] Initialized from firmware.mem
+[ROM] First 4 words:
+  0x00000000: 0x00018117
+  0x00000004: 0x00010113
+  0x00000008: 0x14400293
+  0x0000000C: 0x00008317
+[RAM] Initialized 64KB RAM
+ERROR: Could not open VCD file sim/soc_top_tb.vcd for writing.
+
+========================================
+RISC-V SoC Top-Level Testbench
+========================================
+Simulation started at time 0
+
+[200000] Releasing reset
+
+========================================
+Test 1: Firmware Execution
+========================================
+[IBUS] PC=0x00000004 INST=0x00010113
+[IBUS] PC=0x00000008 INST=0x14400293
+[IBUS] PC=0x0000000c INST=0x00008317
+[IBUS] PC=0x00000010 INST=0xff430313
+[IBUS] PC=0x00000014 INST=0x00008397
+[IBUS] PC=0x00000018 INST=0xfec38393
+[IBUS] PC=0x0000001c INST=0x00730c63
+[IBUS] PC=0x00000030 INST=0x0002ae03
+[IBUS] PC=0x00000034 INST=0x00008297
+[IBUS] PC=0x00000038 INST=0xfcc28293
+[IBUS] PC=0x0000003c INST=0x00008317
+[IBUS] PC=0x00000040 INST=0xfc430313
+[IBUS] PC=0x00000044 INST=0x00628863
+[IBUS] PC=0x00000050 INST=0x0002a023
+[IBUS] PC=0x00000054 INST=0x008000ef
+[IBUS] PC=0x00000058 INST=0x0000006f
+[IBUS] PC=0x0000005c INST=0x000107b7
+[IBUS] PC=0x00000060 INST=0xfff78793
+[IBUS] PC=0x00000064 INST=0x00020637
+[IBUS] PC=0x00000068 INST=0x40f62423
+[IBUS] PC=0x0000006c INST=0x000206b7
+[DBUS] WRITE ADDR=0x00020408 DATA=0x0000ffff SEL=1111
+[IBUS] PC=0x00000070 INST=0x40f6a623
+[IBUS] PC=0x00000074 INST=0x00020737
+[DBUS] WRITE ADDR=0x0002040c DATA=0x0000ffff SEL=1111
+[IBUS] PC=0x00000078 INST=0x00100593
+[IBUS] PC=0x0000007c INST=0x40b72023
+[IBUS] PC=0x00000080 INST=0x000207b7
+[DBUS] WRITE ADDR=0x00020400 DATA=0x00000001 SEL=1111
+[IBUS] PC=0x00000084 INST=0x1b200593
+[IBUS] PC=0x00000088 INST=0x50b7a623
+[IBUS] PC=0x0000008c INST=0x00020737
+[UART] Write BAUD_DIV = 434 at time              7430000
+[DBUS] WRITE ADDR=0x0002050c DATA=0x000001b2 SEL=1111
+[UART] Write BAUD_DIV = 434 at time              7510000
+[IBUS] PC=0x00000090 INST=0x00300593
+[IBUS] PC=0x00000094 INST=0x50b72423
+[IBUS] PC=0x00000098 INST=0x000207b7
+[UART] Write CTRL = 0x00000003 at time              8150000
+[DBUS] WRITE ADDR=0x00020508 DATA=0x00000003 SEL=1111
+[UART] Write CTRL = 0x00000003 at time              8230000
+[IBUS] PC=0x0000009c INST=0x04100713
+[IBUS] PC=0x000000a0 INST=0x50e7a023
+[IBUS] PC=0x000000a4 INST=0xff010113
+[UART] Write DATA = 0x41 ('A') at time              8870000
+[DBUS] WRITE ADDR=0x00020500 DATA=0x00000041 SEL=1111
+[UART] Write DATA = 0x41 ('A') at time              8950000
+[IBUS] PC=0x000000a8 INST=0x00012223
+[IBUS] PC=0x000000ac INST=0x00412783
+[IBUS] PC=0x000000b0 INST=0x00018737
+  [INFO] GPIO status: 0x0001
+  [INFO] LED status: 0x5
+  [WARN] Tests not complete yet or failed (GPIO[7]=0)
+  [INFO]   - Test counter: 1
+  [INFO]   - RAM test: FAIL
+  [INFO]   - GPIO test: FAIL
+  [INFO]   - UART test: FAIL
+
+========================================
+Test 2: UART Output
+========================================
+  [INFO] No UART output detected yet
+
+========================================
+Test 3: Protection System
+========================================
+  [TEST] Triggering overcurrent fault
+  [INFO] PWM outputs (should be disabled): 0x00
+  [INFO] LED[1] (fault): 1
+  [TEST] Triggering emergency stop
+  [INFO] PWM outputs (should be disabled): 0x00
+
+========================================
+Test 4: UART Activity
+========================================
+  [INFO] Monitoring UART TX for firmware messages...
+  [INFO] (Requires actual firmware execution)
+  [UART RX] Frame error!
+  [UART RX] Received byte: 0xf8 ('.')
+  [PASS] Received 1 characters via UART
+
+========================================
+Test 5: Memory System
+========================================
+  [INFO] Monitoring bus activity...
+  [INFO] ROM access should be occurring if CPU is running
+
+========================================
+Test 6: Interrupt System
+========================================
+  [INFO] CPU interrupts: 0x00000000
+  [INFO] LED[3] (interrupt active): 0
+
+========================================
+Test 7: Success Loop Verification
+========================================
+  [INFO] Monitoring GPIO blink pattern...
+  [INFO] Limited blink activity detected
+
+========================================
+Testbench Complete
+========================================
+Simulation time: 965700000
+UART characters received: 1
+
+Test Summary:
+  - Firmware tests: INCOMPLETE/FAIL
+  - UART output: FAIL
+  - Success loop: FAIL
+
+✓ Testbench completed successfully!
+========================================
+
+$finish called at time : 965700 ns : File "C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/tb/soc_top_tb.v" Line 369
