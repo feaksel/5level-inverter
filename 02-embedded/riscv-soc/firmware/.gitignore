@@ -1,0 +1,9 @@
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.map
+*.lst
+
+# Keep firmware.hex for Vivado ROM initialization
+!firmware.hex
