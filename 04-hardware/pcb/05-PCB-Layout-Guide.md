@@ -4,8 +4,8 @@
 **Project:** 5-Level Cascaded H-Bridge Multilevel Inverter
 **Author:** 5-Level Inverter Project
 **Date:** 2025-11-15
-**Version:** 1.0
-**Status:** Design - Not Yet Validated
+**Version:** 2.0
+**Status:** Validated Design - TLP250 Configuration
 
 ---
 
@@ -113,22 +113,27 @@ This document provides comprehensive PCB layout guidelines for the 5-level casca
 ```
 ┌─────────────────────────────────────────────┐
 │  Layer 1 (Top) - Signal & SMD Components    │ 1 oz copper
-│  • Gate driver ICs (IR2110)                 │
+│  • Gate driver optocouplers (TLP250)        │
+│  • Isolated DC-DC converters (R-78E15-0.5)  │
 │  • Sensors (ACS724, AMC1301)                │
 │  • Comparators (LM339)                      │
 │  • SMD resistors, capacitors                │
 │  • Control signals from STM32               │
 ├─────────────────────────────────────────────┤
-│  Layer 2 - GND Plane (solid)                │ 1 oz copper
-│  • Main ground reference                    │
-│  • Continuous pour except for thermal vias  │
+│  Layer 2 - GND Plane (solid with splits)    │ 1 oz copper
+│  • Main ground reference (common)           │
+│  • Isolated GND plane 1 (H-Bridge 1)        │
+│  • Isolated GND plane 2 (H-Bridge 2)        │
+│  • 5mm isolation barrier between regions    │
 │  • Low impedance return path                │
 ├─────────────────────────────────────────────┤
 │  Layer 3 - Power Planes (split)             │ 1 oz copper
-│  • +12V region (gate driver supply)         │
+│  • +12V region (DC-DC converter input)      │
+│  • +15V Isolated 1 (H-Bridge 1 drivers)     │
+│  • +15V Isolated 2 (H-Bridge 2 drivers)     │
 │  • +5V region (logic supply)                │
 │  • +3.3V region (ADC reference)             │
-│  • Separated by 1mm gap                     │
+│  • Separated by 2mm gaps (5mm for isolated) │
 ├─────────────────────────────────────────────┤
 │  Layer 4 (Bottom) - Power & Thermal         │ 2 oz copper
 │  • Power MOSFETs (large pads for heatsink)  │
@@ -138,6 +143,15 @@ This document provides comprehensive PCB layout guidelines for the 5-level casca
 │  • Large copper pours for heat spreading    │
 └─────────────────────────────────────────────┘
 ```
+
+**Critical Design Note for TLP250:**
+
+⚠️ **Isolation Barriers Required:** Unlike IR2110 bootstrap drivers, TLP250 optocouplers require true galvanic isolation between input (STM32 side) and output (MOSFET gate drive side). This means:
+- Separate ground planes for each H-bridge module (Layer 2)
+- Separate +15V power planes for each module (Layer 3)
+- 5mm minimum isolation barrier between common ground and isolated grounds
+- 5mm minimum isolation barrier between +15V regions
+- Optocoupler bridges the isolation barrier (2.5kV isolation rating)
 
 **Dielectric Material:** FR-4, Tg > 170°C (high-temperature rated)
 
@@ -216,52 +230,148 @@ This document provides comprehensive PCB layout guidelines for the 5-level casca
 
 ## Gate Driver Layout
 
-### IR2110 Placement
+### TLP250 Placement and Isolation Design
 
-**Location:** Top layer, directly above MOSFETs
+**Location:** Top layer, with strict isolation barrier layout
 
-**Critical Connections:**
+**Critical Design Principle:** TLP250 optocouplers provide galvanic isolation between input (STM32 side) and output (MOSFET drive side). PCB layout must maintain this isolation.
 
-1. **Bootstrap Circuit:**
-   - VB, VS, Bootstrap diode, Bootstrap cap
-   - Minimize trace length (< 10mm total loop)
-   - Place bootstrap components within 5mm of IC
+### Isolation Barrier Architecture
 
 ```
-       VB (pin 1) ──┬─── Cboot (1μF) ───┬─── VS (pin 3)
-                    │                    │
-                    │   Dboot (UF4007)   │
-                    └────────┬───────────┘
-                             │
-                           Vcc (12V)
+┌─────────────────────────────┬─────────────────────────────┐
+│   COMMON SIDE (STM32)       │  ISOLATED SIDE (H-Bridge)   │
+│   (No restrictions)         │  (Maintain isolation!)      │
+│                             │                             │
+│  STM32 GPIO                 │               MOSFET Gate   │
+│     │                       │                     │       │
+│     └──→ 150Ω ──→ TLP250 LED │ Photodetector ──→ 10Ω ──┘  │
+│                  (Pin 1,2) │ (Pin 7,6)                   │
+│                             │                             │
+│  Common GND                 │  Isolated GND               │
+│  (Plane region 1)           │  (Plane region 2)           │
+│                             │                             │
+│  +3.3V Rail (STM32)         │  +15V Isolated Rail         │
+│                             │  (from DC-DC converter)     │
+│                             │                             │
+└─────────────────────────────┴─────────────────────────────┘
+         ← 5mm Isolation Barrier →
 ```
 
-2. **Gate Drive Output:**
-   - HO, LO directly to MOSFET gates
-   - 10Ω series gate resistor close to MOSFET (< 5mm)
-   - Minimize trace inductance
+**Isolation Barrier Rules:**
+1. **5mm minimum clearance** between common and isolated copper
+2. **No copper pours crossing** the isolation barrier (except through TLP250)
+3. **Solder mask dam** across isolation barrier (for creepage)
+4. **Silkscreen marking** showing isolation barrier
+
+### TLP250 Component Placement
+
+**One TLP250 per MOSFET** (8× total):
+- Place TLP250 straddling the isolation barrier
+- Input side (LED, pins 1-2) on common ground side
+- Output side (detector, pins 6-7) on isolated ground side
+- Orient all TLP250s in same direction for clarity
+
+**Layout for one H-Bridge Module (4× TLP250):**
 
 ```
-   IR2110 HO (pin 2) ──→ 10Ω ──→ MOSFET Gate (S1)
-                         (< 30mm total trace length)
+Common Side          │        Isolated Side (H-Bridge 1)
+                     │
+STM32 PWM1 ──150Ω──→ TLP250_1 ──10Ω──→ S1 Gate (High-side 1)
+                     │
+STM32 PWM2 ──150Ω──→ TLP250_2 ──10Ω──→ S2 Gate (Low-side 1)
+                     │
+STM32 PWM3 ──150Ω──→ TLP250_3 ──10Ω──→ S3 Gate (High-side 2)
+                     │
+STM32 PWM4 ──150Ω──→ TLP250_4 ──10Ω──→ S4 Gate (Low-side 2)
+                     │
+Common GND           │        Isolated GND 1
+                     │
+                     5mm isolation barrier
 ```
 
-3. **Power Supply Decoupling:**
-   - 100 nF ceramic cap between Vcc and GND (< 5mm from IC)
-   - 100 nF ceramic cap between Vdd and COM (< 5mm from IC)
-   - 100 μF electrolytic on Vcc rail (nearby, within 20mm)
+### Component Placement Details
 
-**Grounding:**
-- COM pin connects to local ground plane via multiple vias
-- Separate analog and digital grounds if possible
+**1. Input Side (STM32/Common):**
+- **150Ω resistor** within 5mm of TLP250 LED input (pin 1, anode)
+- Connect resistor to STM32 GPIO trace
+- Pin 2 (cathode) connects to common GND via short trace (< 10mm)
+- Decoupling cap (100 nF) on +3.3V rail near TLP250 area
 
-### Level Shifter Placement
+**2. Output Side (MOSFET/Isolated):**
+- **10Ω gate resistor** within 5mm of MOSFET gate
+- TLP250 output (pins 6&7 tied together) connects to 10Ω resistor
+- Keep trace from TLP250 to gate resistor short (< 20mm)
+- Pin 8 (Vcc) connects to +15V isolated plane via multiple vias
+- Pin 5 (GND) connects to isolated GND plane via multiple vias
 
-**SN74AHCT125** (3.3V → 5V)
+**3. Power Supply Decoupling (Per Module):**
+- **100 nF ceramic** between +15V isolated and isolated GND (< 5mm from TLP250 Vcc pin)
+- **100 μF electrolytic** on +15V isolated rail (one per 4× TLP250 group, within 30mm)
 
-Place near STM32 Nucleo board connector:
-- Minimize trace length from STM32 GPIO to level shifter
-- Decoupling cap (100 nF) on both 3.3V and 5V rails
+**Power Distribution Layout:**
+```
+DC-DC Converter (R-78E15-0.5)
+       │
+   +15V Iso 1 ────┬──→ TLP250_1 (Pin 8)
+   (Isolated)     ├──→ TLP250_2 (Pin 8)
+                  ├──→ TLP250_3 (Pin 8)
+                  └──→ TLP250_4 (Pin 8)
+                       │
+                  100μF Bulk Cap (one per module)
+                       │
+                  4× 100nF decoupling (one per TLP250)
+```
+
+### Grounding Strategy for TLP250
+
+**Three Separate Ground Regions:**
+
+1. **Common GND** (STM32, sensors, control logic)
+   - Solid plane on Layer 2
+   - All TLP250 input sides (pin 2) connect here
+
+2. **Isolated GND 1** (H-Bridge 1)
+   - Isolated plane region on Layer 2
+   - 4× TLP250 output sides (pin 5) connect here
+   - DC-DC converter #1 output ground
+   - MOSFETs S1-S4 source connections
+
+3. **Isolated GND 2** (H-Bridge 2)
+   - Separate isolated plane region on Layer 2
+   - 4× TLP250 output sides (pin 5) connect here
+   - DC-DC converter #2 output ground
+   - MOSFETs S5-S8 source connections
+
+**CRITICAL:** Isolated GND 1 and Isolated GND 2 must **NEVER** connect to each other or to Common GND on the PCB. Only connection is through the H-bridge MOSFET switching nodes.
+
+### Trace Routing Across Isolation Barrier
+
+**ONLY these signals cross the isolation barrier:**
+- 8× TLP250 optocoupler packages (internal optical coupling)
+- **NO copper traces** may cross the barrier
+
+**How to Route Signals:**
+```
+STM32 GPIO ───── (Common side traces) ───── TLP250 input
+                                              │
+                                     (Optical coupling)
+                                              │
+                    TLP250 output ───── (Isolated side traces) ───── MOSFET gate
+```
+
+### Isolation Barrier Silkscreen Markings
+
+Add clear markings on silkscreen:
+```
+Common Side:           │  Isolated Side:
+"COMMON GND"           │  "ISOLATED GND 1"
+"3.3V / 5V Logic"      │  "+15V Isolated"
+                       │
+     ═══════════ ISOLATION BARRIER ═══════════
+                       │
+                  (5mm clearance)
+```
 
 ---
 
@@ -318,57 +428,114 @@ Sensor Output ──→ 10kΩ ──┬──→ STM32 ADC Pin
 
 ## Ground and Power Planes
 
-### Ground Strategy
+### Ground Strategy for TLP250 Isolation
 
-**Single-Point Grounding:**
+**Multiple Isolated Ground Regions:**
 
-The board uses a **star ground** topology:
+The board uses **separate isolated ground regions** for TLP250 configuration:
 
 ```
-                Power GND ──────┬──────── Analog GND
-                                │
-                                │
-                           Main Ground
-                           (connection point near PSU input)
-                                │
-                                │
-                       Digital GND (STM32, gate drivers)
+┌──────────────────────────────────────────────────┐
+│                  Layer 2 (GND Plane)             │
+│                                                  │
+│  ┌─────────────┐   5mm   ┌────────┐  5mm ┌────┐│
+│  │   Common    │ barrier │ Iso 1  │ gap  │Iso2││
+│  │     GND     │═════════│  GND   │══════│GND ││
+│  │             │         │        │      │    ││
+│  │ • STM32     │         │• TLP250│      │•TLP││
+│  │ • Sensors   │         │  out   │      │ out││
+│  │ • TLP250 in │         │• DC-DC │      │•DC ││
+│  │ • Logic     │         │  #1    │      │-DC ││
+│  │             │         │• S1-S4 │      │ #2 ││
+│  └─────────────┘         └────────┘      └────┘│
+│                                                  │
+└──────────────────────────────────────────────────┘
 ```
 
-**Ground Plane Splits:**
-- Do NOT split ground plane (creates current loops)
-- Instead, use solid ground pour on Layer 2
-- Connect power GND, analog GND, digital GND at single point near PSU
+**Critical Isolation Rules:**
+1. **5mm minimum gap** between Common GND and Isolated GND regions
+2. **5mm minimum gap** between Isolated GND 1 and Isolated GND 2
+3. **No copper fill** in isolation barriers
+4. **Silkscreen warning** across isolation barriers
+5. All TLP250 input sides connect to Common GND only
+6. All TLP250 output sides connect to respective Isolated GND only
 
 **Ground Vias:**
-- Use many vias (every 10mm) to connect top-layer GND to plane
-- Reduces impedance and improves EMI
+- Use many vias (every 10mm) within each ground region
+- **NO vias crossing** isolation barriers
+- Thermal vias under MOSFETs connect to respective Isolated GND
 
-### Power Planes (Layer 3)
+### Power Planes (Layer 3) with Isolated Regions
 
-**Regions:**
+**Layout with Isolation:**
 
 ```
-┌────────────────────────────────────────┐
-│                                        │
-│  +12V Region (Gate Drivers)            │
-│  ────────────────────────────          │
-│                             │          │
-│                          1mm gap       │
-│                             │          │
-│  +5V Region (Logic) ────────────────   │
-│                             │          │
-│                          1mm gap       │
-│                             │          │
-│  +3.3V Region (ADC, STM32) ──────────  │
-│                                        │
-└────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                Layer 3 (Power Planes)           │
+│                                                 │
+│  ┌──────────┐   ┌────────────┐   ┌──────────┐ │
+│  │  Common  │   │  Isolated  │   │ Isolated │ │
+│  │  Power   │   │  Power #1  │   │ Power #2 │ │
+│  │          │   │            │   │          │ │
+│  │ • +12V   │   │ • +15V Iso1│   │• +15V Iso│ │
+│  │ • +5V    │   │   (from    │   │    (from │ │
+│  │ • +3.3V  │   │   DC-DC #1)│   │   DC-DC2)│ │
+│  │          │   │ • TLP250   │   │ • TLP250 │ │
+│  │          │   │   output   │   │   output │ │
+│  │          │   │   side     │   │   side   │ │
+│  └──────────┘   └────────────┘   └──────────┘ │
+│       ↑               ↑                 ↑      │
+│    2mm gap       5mm barrier      5mm barrier  │
+│                                                 │
+└─────────────────────────────────────────────────┘
 ```
+
+**Power Region Details:**
+
+1. **Common Power Region:**
+   - +12V plane (for DC-DC converter inputs)
+   - +5V plane (for STM32, sensors, logic)
+   - +3.3V plane (for STM32 core, ADC reference)
+   - Separated by 2mm gaps within region
+
+2. **Isolated Power Region 1:**
+   - +15V plane for H-Bridge 1 TLP250 drivers (4× TLP250)
+   - Connected to DC-DC converter #1 output
+   - 5mm barrier from Common and Isolated Region 2
+
+3. **Isolated Power Region 2:**
+   - +15V plane for H-Bridge 2 TLP250 drivers (4× TLP250)
+   - Connected to DC-DC converter #2 output
+   - 5mm barrier from Common and Isolated Region 1
 
 **Capacitor Placement on Power Planes:**
-- 100 μF electrolytic at PSU input (per rail)
-- 10 μF ceramic at each IC power pin
-- 100 nF ceramic at every IC (0.1" from pin)
+- **Common side:**
+  - 100 μF electrolytic at PSU input (per rail: +12V, +5V)
+  - 100 nF ceramic at each IC (STM32, sensors, logic)
+  - 100 nF at TLP250 input side (between +3.3V and Common GND)
+
+- **Isolated side (per module):**
+  - 100 μF electrolytic on +15V isolated rail (one per module)
+  - 100 nF ceramic at each TLP250 output side Vcc pin (between +15V Iso and Iso GND)
+  - Place caps on isolated side of barrier only
+
+### DC-DC Converter Placement
+
+**RECOM R-78E15-0.5 Placement:**
+
+```
+                Isolation Barrier
+                       │
+   +12V (Common) ──→ [DC-DC] ──→ +15V Isolated 1
+   GND (Common)  ──→   │    ──→ GND Isolated 1
+                       │
+         SIP-4 package straddles barrier
+```
+
+- Place DC-DC converter straddling the isolation barrier
+- Input pins (+12V, GND) on Common side
+- Output pins (+15V, GND) on Isolated side
+- Follow datasheet for minimum creepage (typically 4-5mm)
 
 ---
 
@@ -554,12 +721,22 @@ But we use 10mm (400 mil) for extra margin and lower resistance.
 **Our Design:**
 - 50V DC bus: Use 2mm clearance, 3mm creepage (safety margin)
 - 100V AC output: Use 3mm clearance, 5mm creepage
+- **TLP250 isolation barriers:** Use 5mm clearance, 5mm creepage (2.5kV isolation)
+- **DC-DC converter isolation:** Use 5mm clearance, 5mm creepage (1kV isolation)
 - Mains (if applicable): Use 6mm clearance, 8mm creepage
 
 **Implementation:**
 - Keep copper pours away from high-voltage areas
+- **Maintain 5mm isolation barrier** between Common and Isolated ground/power regions
 - Use solder mask as additional insulation (but don't rely on it!)
-- Add silkscreen "keep-out" markings
+- Add silkscreen "keep-out" markings and isolation barrier warnings
+- TLP250 and DC-DC converters straddle isolation barriers
+
+**TLP250-Specific Isolation Requirements:**
+- **Input to output:** 2.5kV isolation (TLP250 internal)
+- **PCB creepage:** 5mm minimum between input-side copper and output-side copper
+- **Clearance:** 5mm minimum through air
+- **Solder mask dam:** Required across isolation barrier (0.1mm minimum thickness)
 
 ---
 
@@ -615,10 +792,34 @@ But we use 10mm (400 mil) for extra margin and lower resistance.
 
 ---
 
-**Document Status:** Design guide complete, ready for PCB layout
-**Next Steps:** Create PCB layout in KiCad, generate Gerber files, order prototype
+**Document Version:** 2.0
+**Last Updated:** 2025-11-15
+**Document Status:** Design guide complete for TLP250 configuration, ready for PCB layout
+
+**Major Changes in v2.0:**
+- Replaced IR2110 bootstrap driver layout with TLP250 optocoupler isolation design
+- Added comprehensive isolation barrier guidelines (5mm clearance/creepage)
+- Updated ground plane strategy to include 3 isolated regions (Common, Iso1, Iso2)
+- Updated power plane layout for +15V isolated supplies (2 regions)
+- Added DC-DC converter placement guidelines (RECOM R-78E15-0.5)
+- Removed bootstrap circuit layout section (no longer applicable)
+- Removed level shifter placement section (no longer needed with TLP250)
+- Updated layer stackup to show isolated ground/power regions
+- Added TLP250-specific component placement and routing rules
+- Updated creepage/clearance requirements for optocoupler isolation
+
+**Critical Design Differences from IR2110:**
+- **Isolation barriers:** TLP250 requires true isolation vs. IR2110 bootstrap
+- **Ground planes:** Split into 3 regions vs. single unified ground
+- **Power planes:** 2× isolated +15V regions vs. single +12V region
+- **Component count:** 8× TLP250 + 2× DC-DC vs. 4× IR2110
+- **PCB complexity:** Higher due to isolation requirements
+
+**Next Steps:** Create PCB layout in KiCad following isolation guidelines, generate Gerber files, order prototype
 
 **Related Documents:**
-- `../schematics/*.md` - Circuit schematics for layout
+- `../schematics/01-Gate-Driver-Design.md` - TLP250 gate driver circuit design
+- `../schematics/02-Power-Supply-Design.md` - Power supply with isolated DC-DC converters
 - `../bom/Complete-BOM.md` - Component selection and footprints
+- `../../07-docs/ELE401_Fall2025_IR_Group1.pdf` - Graduation project report with validation
 - `../../07-docs/05-Hardware-Testing-Procedures.md` - Testing after assembly

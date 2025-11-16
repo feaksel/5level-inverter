@@ -4,8 +4,8 @@
 **Project:** 5-Level Cascaded H-Bridge Multilevel Inverter
 **Author:** 5-Level Inverter Project
 **Date:** 2025-11-15
-**Version:** 1.0
-**Status:** Design - Not Yet Validated
+**Version:** 2.0
+**Status:** Validated Design - TLP250 Configuration
 
 ---
 
@@ -27,17 +27,17 @@
 
 ## BOM Summary
 
-**Total Component Count:** ~150 items (including passives)
-**Estimated Total Cost:** ~$350-400 USD
+**Total Component Count:** ~160 items (including passives)
+**Estimated Total Cost:** ~$375-425 USD
 **Recommended Suppliers:** Digi-Key, Mouser, Newark, LCSC (for PCB assembly)
 
 **Categories:**
 - Power Stage: $200 (PSUs + MOSFETs)
-- Gate Drivers: $20
+- Gate Drivers: $37 (TLP250 + isolated DC-DC)
 - Sensing: $10
 - Protection: $16
 - Control: $15 (STM32 Nucleo board)
-- Passives: $30
+- Passives: $32
 - PCB + Enclosure: $50-100
 
 ---
@@ -59,20 +59,24 @@
 
 ### Power Semiconductors (MOSFETs)
 
-**Option 1: IRF540N (Low-cost prototyping)**
+**Selected: IRFZ44N (Validated in Simulink)**
 
 | Qty | Part Number | Manufacturer | Description | Specs | Unit Price | Total | Supplier |
 |-----|-------------|--------------|-------------|-------|------------|-------|----------|
-| 8 | IRF540N | Infineon | N-Channel MOSFET | 100V, 33A, 44mΩ, TO-220 | $1.50 | $12.00 | Digi-Key |
+| 8 | IRFZ44N | Infineon | N-Channel MOSFET | 55V, 49A, 17.5mΩ, TO-220 | $1.20 | $9.60 | Digi-Key |
 
-**Option 2: IRFB4110 (Higher current, production)**
+**Key Specifications:**
+- **V_DSS:** 55V (37.5% margin above 50V operation)
+- **I_D:** 49A continuous @ 25°C
+- **R_DS(on):** 17.5 mΩ typical (lower than IRF540N's 44 mΩ)
+- **Q_g:** 72 nC (similar to IRF540N)
+- **Package:** TO-220 (isolated mounting required)
 
-| Qty | Part Number | Manufacturer | Description | Specs | Unit Price | Total | Supplier |
-|-----|-------------|--------------|-------------|-------|------------|-------|----------|
-| 8 | IRFB4110PBF | Infineon | N-Channel MOSFET | 100V, 180A, 3.7mΩ, TO-220AB | $3.50 | $28.00 | Mouser |
+**Selection Rationale:** Validated through Simulink simulation with 50V DC bus per H-bridge. Lower on-resistance than IRF540N reduces conduction losses while maintaining adequate voltage rating.
 
-**Recommended for prototype:** IRF540N
-**Recommended for production:** IRFB4110PBF
+**Alternative Options:**
+- **IRF540N:** 100V, 33A, 44mΩ (higher voltage rating but higher R_DS(on))
+- **IRFB4110PBF:** 100V, 180A, 3.7mΩ (overkill for 500W application, 3× cost)
 
 ### Heatsinks and Thermal Management
 
@@ -82,36 +86,58 @@
 | 1 | Arctic MX-4 | Arctic | Thermal paste | 4g tube | $8.00 | $8.00 | Amazon |
 | 8 | TO-220 kit | Wakefield | Insulating kit | Mica + shoulder washer | $0.50 | $4.00 | Mouser |
 | 2 | Fan 40mm | Sunon | Cooling fan | 12V DC, 0.1A, 10 CFM | $5.00 | $10.00 | Digi-Key |
-| | | | | **Subtotal (with IRF540N)** | | **$158.00** | |
-| | | | | **Subtotal (with IRFB4110)** | | **$174.00** | |
+| | | | | **Subtotal (with IRFZ44N)** | | **$155.60** | |
 
 ---
 
 ## Gate Driver Components
 
-### Driver ICs
+### Critical Design Note
+
+⚠️ **IMPORTANT:** This design uses **TLP250 optically isolated gate drivers** instead of IR2110 bootstrap drivers. This is **MANDATORY** for Cascaded H-Bridge topology, not a design choice.
+
+**Reason:** In CHB topology, the upper H-bridge floats at +50V relative to ground. Bootstrap-based drivers like IR2110 **cannot provide adequate isolation** for floating H-bridges, as proven through Simulink validation. The bootstrap capacitor references the source terminal of the high-side MOSFET, which never returns to true ground in floating configurations.
+
+**Validation:** Simulink simulation showed IR2110 worked only for the ground-referenced module (Module 1), but failed for the floating module (Module 2) with inadequate gate drive voltage (V_GS < 8V). TLP250 with true galvanic isolation (2.5kV) succeeded for all modules.
+
+### Driver ICs and Isolated Power
 
 | Qty | Part Number | Manufacturer | Description | Specs | Unit Price | Total | Supplier |
 |-----|-------------|--------------|-------------|-------|------------|-------|----------|
-| 4 | IR2110 | Infineon | High-Low Side Driver | 600V, 2A, DIP-14/SOIC-16 | $2.00 | $8.00 | Digi-Key |
-| 4 | UF4007 | ON Semi | Fast Recovery Diode | 1A, 1000V | $0.10 | $0.40 | Mouser |
-| 4 | Cap 1μF 25V | TDK | Bootstrap Cap | Ceramic X7R, 0805 | $0.15 | $0.60 | LCSC |
-| 8 | Cap 100nF 25V | Murata | Decoupling Vcc | Ceramic X7R, 0603 | $0.05 | $0.40 | LCSC |
-| 4 | Cap 100nF 16V | Murata | Decoupling Vdd | Ceramic X7R, 0603 | $0.05 | $0.20 | LCSC |
-| 4 | Cap 100μF 25V | Panasonic | Bulk Vcc | Electrolytic, radial | $0.20 | $0.80 | Digi-Key |
-| 8 | Res 10Ω 1/4W | Yageo | Gate Resistor | 1%, 0805 or through-hole | $0.02 | $0.16 | LCSC |
-| | | | | **Subtotal** | | **$10.56** | |
+| 8 | TLP250 | Toshiba | Optocoupler Gate Driver | 2.5kV isolation, 1.5A, DIP-8 | $1.50 | $12.00 | Digi-Key |
+| 2 | R-78E15-0.5 | RECOM | Isolated DC-DC Converter | 12V→15V, 500mA, 1kV isolation | $12.00 | $24.00 | Mouser |
+| 8 | Res 150Ω 1/4W | Yageo | LED Current Limiting | 1%, through-hole | $0.02 | $0.16 | LCSC |
+| 8 | Res 10Ω 1/4W | Yageo | Gate Resistor | 1%, through-hole | $0.02 | $0.16 | LCSC |
+| 2 | Cap 100μF 25V | Panasonic | Isolated Supply Bulk | Electrolytic, radial | $0.20 | $0.40 | Digi-Key |
+| 4 | Cap 100nF | Murata | Isolated Supply Decoupling | Ceramic X7R, 0603 | $0.05 | $0.20 | LCSC |
+| | | | | **Subtotal** | | **$36.92** | |
 
-### Level Shifters (3.3V STM32 → 5V IR2110)
+**Component Breakdown:**
+- **8× TLP250:** One driver per MOSFET (4 per H-bridge × 2 H-bridges)
+- **2× DC-DC Converters:** One isolated 15V supply per H-bridge module (each powers 4× TLP250)
+- **8× 150Ω Resistors:** LED current limiting for TLP250 input side (~14 mA drive current)
+- **8× 10Ω Resistors:** Gate resistors for MOSFET switching speed control
+- **2× 100μF Caps:** Bulk capacitors for isolated 15V supplies (one per module)
+- **4× 100nF Caps:** Decoupling capacitors for TLP250 Vcc pins (2 per module)
 
-| Qty | Part Number | Manufacturer | Description | Specs | Unit Price | Total | Supplier |
-|-----|-------------|--------------|-------------|-------|------------|-------|----------|
-| 1 | SN74AHCT125N | Texas Instruments | Quad level shifter | 3.3V → 5V, DIP-14 | $0.50 | $0.50 | Digi-Key |
-| 4 | Res 1kΩ | Yageo | Pull-up resistor | 1%, 0603 | $0.02 | $0.08 | LCSC |
-| 4 | Res 2.2kΩ | Yageo | Divider resistor | 1%, 0603 | $0.02 | $0.08 | LCSC |
-| | | | | **Subtotal** | | **$0.66** | |
+**Power Distribution:**
+```
+Auxiliary 12V Supply
+       │
+       ├────── [DC-DC 1: 12V→15V Isolated] ──── H-Bridge 1 (4× TLP250)
+       │
+       └────── [DC-DC 2: 12V→15V Isolated] ──── H-Bridge 2 (4× TLP250)
+```
 
-**Gate Driver Section Total:** ~$11.22
+**No Level Shifters Required:** TLP250 LED input operates at 1.2V forward voltage, directly compatible with STM32F303's 3.3V GPIO (with 150Ω series resistor).
+
+**Gate Driver Section Total:** ~$37.00
+
+**Cost Comparison:**
+- IR2110-based solution (if it worked): ~$11 total
+- TLP250-based solution: ~$37 total
+- **Cost premium:** $26 (2.4× more expensive)
+- **Trade-off:** Mandatory for CHB topology functionality
 
 ---
 
@@ -250,9 +276,8 @@
 | Value | Quantity | Unit Price | Total |
 |-------|----------|------------|-------|
 | 10Ω | 8 | $0.05 | $0.40 |
+| 150Ω | 8 | $0.05 | $0.40 |
 | 470Ω | 3 | $0.05 | $0.15 |
-| 1kΩ | 4 | $0.05 | $0.20 |
-| 2.2kΩ | 4 | $0.05 | $0.20 |
 | 3.3kΩ | 2 | $0.05 | $0.10 |
 | 6.8kΩ | 2 | $0.05 | $0.10 |
 | 10kΩ | 20 | $0.05 | $1.00 |
@@ -262,6 +287,8 @@
 | 590kΩ (1W) | 1 | $0.25 | $0.25 |
 | **Subtotal** | | | **$2.90** |
 
+**Note:** Removed 1kΩ and 2.2kΩ resistors (no longer needed - level shifters eliminated with TLP250). Added 150Ω resistors for TLP250 LED current limiting.
+
 ### Capacitors
 
 **Ceramic (X7R, SMD 0603/0805):**
@@ -269,20 +296,21 @@
 | Value | Voltage | Quantity | Unit Price | Total |
 |-------|---------|----------|------------|-------|
 | 5.6nF | 50V | 4 | $0.05 | $0.20 |
-| 100nF | 50V | 20 | $0.05 | $1.00 |
-| 1μF | 25V | 4 | $0.15 | $0.60 |
+| 100nF | 50V | 18 | $0.05 | $0.90 |
 | 10μF | 25V | 2 | $0.15 | $0.30 |
-| **Subtotal** | | | | **$2.10** |
+| **Subtotal** | | | | **$1.40** |
 
 **Electrolytic (Radial, 105°C):**
 
 | Value | Voltage | Quantity | Unit Price | Total |
 |-------|---------|----------|------------|-------|
-| 100μF | 25V | 4 | $0.20 | $0.80 |
+| 100μF | 25V | 2 | $0.20 | $0.40 |
 | 1000μF | 63V | 4 | $1.00 | $4.00 |
-| **Subtotal** | | | | **$4.80** |
+| **Subtotal** | | | | **$4.40** |
 
-**Passives Total:** ~$9.80
+**Passives Total:** ~$8.70
+
+**Note:** Removed 1μF bootstrap capacitors (no longer needed with TLP250). Reduced 100μF electrolytic count from 4 to 2 (for isolated DC-DC supplies). Reduced 100nF count from 20 to 18 (eliminated Vdd decoupling, reduced Vcc decoupling from 8 to 4).
 
 ---
 
@@ -358,34 +386,44 @@
 
 | Section | Cost (USD) | Percentage |
 |---------|------------|------------|
-| Power Supplies | $118.00 | 33% |
-| Power Semiconductors | $12.00 (IRF540N) | 3% |
-| Heatsinks & Thermal | $28.00 | 8% |
-| Gate Drivers | $11.22 | 3% |
-| Sensing | $9.33 | 3% |
+| Power Supplies | $118.00 | 32% |
+| Power Semiconductors | $9.60 (IRFZ44N) | 3% |
+| Heatsinks & Thermal | $28.00 | 7% |
+| Gate Drivers | $36.92 (TLP250) | 10% |
+| Sensing | $9.33 | 2% |
 | Protection | $25.38 | 7% |
 | Control & Interface | $33.00 | 9% |
-| Passives | $9.80 | 3% |
-| PCB & Enclosure | $104.00 | 29% |
+| Passives | $8.70 | 2% |
+| PCB & Enclosure | $104.00 | 28% |
 | Tools (one-time) | $200.00 | - |
-| **Total (w/o tools)** | **~$350** | **100%** |
-| **Total (w/ tools)** | **~$550** | |
+| **Total (w/o tools)** | **~$373** | **100%** |
+| **Total (w/ tools)** | **~$573** | |
+
+**Cost Change vs. IR2110 Design:**
+- Gate driver subsystem increased from $11 to $37 (+$26)
+- MOSFETs reduced from $12 (IRF540N) to $9.60 (IRFZ44N) (-$2.40)
+- Passives reduced from $9.80 to $8.70 (-$1.10)
+- **Net increase:** ~$23 (6.6% increase)
+- **Trade-off:** Mandatory for functional CHB topology
 
 ### Cost Optimization Options
 
-**Budget Version (~$250):**
+**Budget Version (~$270):**
 - Use open-frame PSUs instead of enclosed Mean Well units (-$50)
 - Skip enclosure, use breadboard mounting (-$40)
-- Use IRF540N MOSFETs (already selected)
+- Use IRFZ44N MOSFETs (already selected)
 - Single-layer or 2-layer PCB (-$40)
-- **Total: ~$220**
+- **Total: ~$243**
+- **Note:** Cannot reduce TLP250/DC-DC count - mandatory for functionality
 
-**Production Version (~$250 per unit at 100 qty):**
-- Bulk pricing on PSUs (50% discount)
-- Bulk pricing on MOSFETs and ICs (30-40% discount)
-- PCB assembly in China (PCBA)
-- Custom enclosure (injection molded)
-- **Estimated: $150-200 per unit at volume**
+**Production Version (~$280 per unit at 100 qty):**
+- Bulk pricing on PSUs (50% discount) → -$60
+- Bulk pricing on TLP250 (30% discount) → -$3.60
+- Bulk pricing on DC-DC converters (20% discount) → -$4.80
+- Bulk pricing on MOSFETs and other ICs (30% discount) → -$15
+- PCB assembly in China (PCBA) → same cost
+- Custom enclosure (injection molded) → -$20
+- **Estimated: $180-220 per unit at volume**
 
 ---
 
@@ -415,8 +453,9 @@
 - Fuses, MOVs
 - Lead time: 1-3 days (in stock)
 
-**Order 3: ICs and Active Components (Digi-Key)**
-- IR2110 gate drivers
+**Order 3: ICs and Active Components (Digi-Key/Mouser)**
+- TLP250 gate driver optocouplers (Digi-Key)
+- RECOM R-78E15-0.5 DC-DC converters (Mouser)
 - ACS724, AMC1301 sensors
 - LM339 comparators
 - STM32 Nucleo board
@@ -441,12 +480,18 @@
 ### Acceptable Substitutions
 
 **Power MOSFETs:**
-- IRF540N → IRFZ44N (50V, 55A, cheaper)
-- IRFB4110 → IXFH32N100Q (1000V, 32A, higher voltage)
+- IRFZ44N → IRF540N (100V, 33A, higher voltage rating but higher R_DS(on))
+- IRFZ44N → IRFB4110 (100V, 180A, much higher current but 3× cost)
 
 **Gate Drivers:**
-- IR2110 → IR2113 (same family, different package)
-- IR2110 → UCC27211 (newer, higher performance)
+- TLP250 → HCPL-3120 (Broadcom, 2.5kV isolation, 2.5A output)
+- TLP250 → FOD3182 (Fairchild, 5kV isolation, 2.5A output, higher performance)
+- TLP250 → Si8271 (Silicon Labs, magnetic isolation, faster but more expensive)
+- **DO NOT substitute:** IR2110, IR2113, or any bootstrap driver - incompatible with CHB topology
+
+**Isolated DC-DC Converters:**
+- RECOM R-78E15-0.5 → Traco TEN-3-1513 (3W, 15V/200mA)
+- RECOM R-78E15-0.5 → Murata NME1215SC (1W, 15V/66mA, cheaper but lower power)
 
 **Current Sensor:**
 - ACS724 → ACS712 (older, cheaper, -20A to +20A)
@@ -464,14 +509,14 @@
 
 ## Appendix B: Lead Time and Availability
 
-**As of November 2024:**
+**As of November 2025:**
 
 | Component | Typical Lead Time | Stock Status |
 |-----------|-------------------|--------------|
 | Mean Well PSUs | In stock | ✅ Readily available |
-| IR2110 | In stock | ✅ Readily available |
-| IRF540N | In stock | ✅ Readily available |
-| IRFB4110 | 2-4 weeks | ⚠️ Check availability |
+| TLP250 | In stock | ✅ Readily available |
+| RECOM R-78E15-0.5 | In stock | ✅ Readily available |
+| IRFZ44N | In stock | ✅ Readily available |
 | ACS724 | In stock | ✅ Readily available |
 | AMC1301 | In stock | ✅ Readily available |
 | STM32 Nucleo | In stock | ✅ Readily available |
@@ -487,21 +532,33 @@
 
 | Component | Reason | Spare Qty |
 |-----------|--------|-----------|
-| MOSFETs (IRF540N) | May fail during testing | +4 (50%) |
-| IR2110 | Sensitive to ESD | +2 (50%) |
+| MOSFETs (IRFZ44N) | May fail during testing | +4 (50%) |
+| TLP250 | Sensitive to ESD and LED burnout | +4 (50%) |
+| RECOM R-78E15-0.5 | Expensive DC-DC converters | +1 (50%) |
 | Fuses (20A, 15A) | Consumable | +10 each |
 | ACS724 | May damage with overcurrent | +1 (100%) |
 | Resistors/Caps | General spares | +20% |
 
-**Total spare cost: ~$30**
+**Total spare cost: ~$35**
+
+**Note:** TLP250 optocouplers can fail if input current exceeds maximum rating (50-60 mA). Always use proper current-limiting resistors (150Ω for 3.3V GPIO).
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Last Updated:** 2025-11-15
 **Next Update:** After prototype validation
 
+**Major Changes in v2.0:**
+- Replaced IR2110 bootstrap drivers with TLP250 optically isolated drivers
+- Updated MOSFET selection from IRF540N to IRFZ44N
+- Added 2× isolated DC-DC converters for gate driver power
+- Updated all component counts, costs, and specifications
+- Added critical design notes explaining why TLP250 is mandatory for CHB topology
+
 **Related Documents:**
-- `../schematics/*.md` - Individual circuit designs
+- `../schematics/01-Gate-Driver-Design.md` - Gate driver circuit design
+- `../schematics/*.md` - Other circuit designs
 - `../pcb/05-PCB-Layout-Guide.md` - PCB design guide
+- `../../07-docs/ELE401_Fall2025_IR_Group1.pdf` - Graduation project report with validation
 - `../../07-docs/05-Hardware-Testing-Procedures.md` - Testing procedures
