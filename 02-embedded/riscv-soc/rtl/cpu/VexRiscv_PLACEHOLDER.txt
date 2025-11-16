@@ -1,0 +1,52 @@
+# VexRiscv Core Placeholder
+# ===========================
+
+VexRiscv core file should be named: VexRiscv.v
+
+The automated download failed due to network restrictions.
+
+## Manual Download Options:
+
+### Option 1: Direct Download (Recommended)
+1. Visit: https://github.com/SpinalHDL/VexRiscv
+2. Go to "Releases" section
+3. Download a pre-built VexRiscv.v file
+4. Place it in this directory: 02-embedded/riscv-soc/rtl/cpu/VexRiscv.v
+
+### Option 2: Clone and Generate
+```bash
+git clone https://github.com/SpinalHDL/VexRiscv.git
+cd VexRiscv
+sbt "runMain vexriscv.demo.GenSmallest"
+cp VexRiscv.v /path/to/5level-inverter/02-embedded/riscv-soc/rtl/cpu/
+```
+
+### Option 3: Use Pre-existing File
+If you already have VexRiscv.v from another project, copy it here.
+
+## For Testing Without VexRiscv:
+
+The current wrapper has a stub implementation that allows synthesis and
+simulation without the actual VexRiscv core. This is useful for:
+- Testing peripherals
+- Verifying memory system
+- Checking bus connectivity
+- FPGA resource estimation
+
+However, firmware will NOT execute without the real core.
+
+## Required VexRiscv Configuration:
+
+- ISA: RV32IMC minimum
+- Bus: Wishbone (both instruction and data buses)
+- Interrupts: External interrupt support
+- Features: Hardware multiply/divide recommended
+
+Port names should include:
+- iBusWishbone_* (instruction bus)
+- dBusWishbone_* (data bus)
+- externalInterrupt
+- clk
+- reset (active HIGH)
+
+See vexriscv_wrapper.v for expected port mapping.
