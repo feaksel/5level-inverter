@@ -186,22 +186,30 @@ sBreakDeadTimeConfig.DeadTime = 168;  // For 2μs @ 84MHz
 ```
 stm32/
 ├── Core/
-│   ├── Inc/
+│   ├── Inc/                          (11 header files, 706 lines)
 │   │   ├── main.h
-│   │   ├── pwm_control.h              # Low-level PWM driver
-│   │   ├── multilevel_modulation.h    # Phase-shifted modulation
-│   │   ├── safety.h                   # Protection system
-│   │   ├── debug_uart.h               # UART debug
-│   │   ├── stm32f4xx_hal_conf.h      # HAL config
-│   │   └── stm32f4xx_it.h             # Interrupts
-│   └── Src/
-│       ├── main.c                     # Application entry
-│       ├── pwm_control.c
-│       ├── multilevel_modulation.c
-│       ├── safety.c
-│       ├── debug_uart.c
-│       ├── stm32f4xx_it.c
-│       └── system_stm32f4xx.c
+│   │   ├── pwm_control.h              # Low-level PWM driver (TIM1/TIM8)
+│   │   ├── multilevel_modulation.h    # Level-shifted carrier modulation
+│   │   ├── pr_controller.h            # Proportional-Resonant controller
+│   │   ├── adc_sensing.h              # Current/voltage ADC sampling
+│   │   ├── safety.h                   # Protection system (OCP/OVP)
+│   │   ├── soft_start.h               # Soft-start ramp sequence
+│   │   ├── data_logger.h              # Data logging to UART
+│   │   ├── debug_uart.h               # UART debug output
+│   │   ├── stm32f4xx_hal_conf.h      # HAL configuration
+│   │   └── stm32f4xx_it.h             # Interrupt handlers
+│   └── Src/                          (11 source files, 1,734 lines)
+│       ├── main.c                     # Application entry (625 lines)
+│       ├── pwm_control.c              # PWM driver (274 lines)
+│       ├── multilevel_modulation.c    # Modulation (141 lines)
+│       ├── pr_controller.c            # PR controller (122 lines)
+│       ├── adc_sensing.c              # ADC sensing (122 lines)
+│       ├── data_logger.c              # Data logger (96 lines)
+│       ├── safety.c                   # Safety (77 lines)
+│       ├── soft_start.c               # Soft-start (74 lines)
+│       ├── debug_uart.c               # Debug output (47 lines)
+│       ├── stm32f4xx_it.c             # Interrupts (76 lines)
+│       └── system_stm32f4xx.c         # System init (80 lines)
 ├── inverter_5level.ioc               # CubeMX project
 ├── STM32F401RETx_FLASH.ld            # Linker script
 ├── startup_stm32f401xe.s             # Startup code
@@ -263,15 +271,34 @@ Advance Sample Index
 - Use proper isolation and safety equipment
 - Monitor temperature continuously
 
-## Next Development Steps
+## Implementation Status
 
-- [ ] Validate PWM generation with scope
-- [ ] Test with low voltage (5-12V)
-- [ ] Add ADC current sensing
-- [ ] Implement closed-loop PR current controller
-- [ ] Add PI voltage outer loop
-- [ ] Implement soft-start sequence
-- [ ] Measure and optimize THD
+### ✅ Completed Features
+- [x] PWM generation (TIM1 + TIM8, 10 kHz, 1 μs dead-time)
+- [x] Level-shifted carrier modulation
+- [x] ADC current/voltage sensing (4 channels, DMA-based)
+- [x] Proportional-Resonant (PR) current controller
+- [x] Safety protection (overcurrent/overvoltage)
+- [x] Soft-start sequence
+- [x] Data logging system
+- [x] UART debug output
+- [x] 4 test modes
+
+### 📋 Pending Hardware Validation
+- [ ] Oscilloscope PWM validation
+- [ ] Low voltage testing (5-12V)
+- [ ] Full power testing (2×50V DC)
+- [ ] Closed-loop current control validation
+- [ ] THD measurement and optimization
+- [ ] Thermal performance testing
+- [ ] Long-duration reliability testing
+
+### 🔮 Future Enhancements
+- [ ] PI voltage outer loop
+- [ ] Grid synchronization
+- [ ] Advanced protection features
+- [ ] Parameter tuning interface
+- [ ] Real-time waveform capture
 
 ## Resources
 
