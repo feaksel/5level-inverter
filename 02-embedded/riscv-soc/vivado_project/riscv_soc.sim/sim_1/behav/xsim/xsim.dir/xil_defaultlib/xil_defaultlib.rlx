@@ -17,5 +17,5 @@ C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/soc_top.v,176
 C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/utils/carrier_generator.v,1763300720,verilog,,C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/peripherals/gpio.v,,carrier_generator,,,../../../../../../../../../../../Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
 C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/utils/pwm_comparator.v,1763300720,verilog,,C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/memory/ram_64kb.v,,pwm_comparator,,,../../../../../../../../../../../Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
 C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/utils/sine_generator.v,1763300720,verilog,,C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/soc_top.v,,sine_generator,,,../../../../../../../../../../../Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
-,,,,,,soc_top_tb,,,,,,,,
+C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/tb/soc_top_tb.v,1763317669,verilog,,,,soc_top_tb,,,../../../../../../../../../../../Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
 C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/vivado_project/riscv_soc.sim/sim_1/behav/xsim/glbl.v,1741209010,verilog,,,,glbl,,,,,,,,
