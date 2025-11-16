@@ -7,9 +7,16 @@ FIRMWARE_DIR = firmware
 VIVADO_DIR = vivado
 BUILD_DIR = build
 BITSTREAM_DIR = bitstreams
+TB_DIR = tb
+SIM_DIR = sim
 
 # Vivado executable (adjust if needed)
 VIVADO = vivado
+
+# Iverilog executable (for open-source simulation)
+IVERILOG = iverilog
+VVP = vvp
+GTKWAVE = gtkwave
 
 # ==============================================================================
 # Targets
@@ -64,18 +71,81 @@ vivado-clean:
 	rm -rf $(VIVADO_DIR)/.Xil
 
 # ==============================================================================
-# Simulation (optional)
+# Simulation
 # ==============================================================================
 
-sim:
-	@echo "Running Vivado simulation..."
-	cd $(VIVADO_DIR) && $(VIVADO) -mode batch -source sim.tcl
+# Create simulation directory
+$(SIM_DIR):
+	mkdir -p $(SIM_DIR)
+
+# Vivado simulations (batch mode)
+sim: sim-soc
+	@echo "Default simulation (SoC top-level) complete"
+
+sim-soc: vivado-project $(SIM_DIR)
+	@echo "Running SoC top-level simulation..."
+	cd $(VIVADO_DIR) && $(VIVADO) -mode batch -source sim.tcl -tclargs soc_top_tb
+
+sim-pwm: vivado-project $(SIM_DIR)
+	@echo "Running PWM accelerator simulation..."
+	cd $(VIVADO_DIR) && $(VIVADO) -mode batch -source sim.tcl -tclargs pwm_accelerator_tb
+
+sim-uart: vivado-project $(SIM_DIR)
+	@echo "Running UART simulation..."
+	cd $(VIVADO_DIR) && $(VIVADO) -mode batch -source sim.tcl -tclargs uart_tb
+
+sim-protection: vivado-project $(SIM_DIR)
+	@echo "Running Protection peripheral simulation..."
+	cd $(VIVADO_DIR) && $(VIVADO) -mode batch -source sim.tcl -tclargs protection_tb
+
+sim-all: sim-soc sim-pwm sim-uart sim-protection
+	@echo ""
+	@echo "====================================="
+	@echo "All simulations complete!"
+	@echo "====================================="
+
+# Iverilog simulations (open-source alternative)
+sim-iverilog-soc: $(SIM_DIR)
+	@echo "Running Icarus Verilog simulation (SoC)..."
+	cd $(SIM_DIR) && $(IVERILOG) -g2012 -o soc_top_tb.vvp \
+		-I../rtl \
+		../rtl/soc_top.v \
+		../rtl/bus/wishbone_interconnect.v \
+		../rtl/memory/*.v \
+		../rtl/peripherals/*.v \
+		../rtl/utils/*.v \
+		../rtl/cpu/vexriscv_wrapper.v \
+		../tb/soc_top_tb.v
+	cd $(SIM_DIR) && $(VVP) soc_top_tb.vvp
+
+sim-iverilog-pwm: $(SIM_DIR)
+	@echo "Running Icarus Verilog simulation (PWM)..."
+	cd $(SIM_DIR) && $(IVERILOG) -g2012 -o pwm_accelerator_tb.vvp \
+		-I../rtl \
+		../rtl/peripherals/pwm_accelerator.v \
+		../rtl/utils/*.v \
+		../tb/pwm_accelerator_tb.v
+	cd $(SIM_DIR) && $(VVP) pwm_accelerator_tb.vvp
+
+# View waveforms (Iverilog)
+view-wave-soc:
+	cd $(SIM_DIR) && $(GTKWAVE) soc_top_tb.vcd &
+
+view-wave-pwm:
+	cd $(SIM_DIR) && $(GTKWAVE) pwm_accelerator_tb.vcd &
+
+# Clean simulation files
+sim-clean:
+	@echo "Cleaning simulation files..."
+	rm -rf $(SIM_DIR)/*.vcd
+	rm -rf $(SIM_DIR)/*.vvp
+	rm -rf $(SIM_DIR)/*.wdb
 
 # ==============================================================================
 # Complete clean
 # ==============================================================================
 
-clean: firmware-clean vivado-clean
+clean: firmware-clean vivado-clean sim-clean
 	@echo "Clean complete."
 
 # ==============================================================================
@@ -141,9 +211,21 @@ help:
 	@echo "  vivado-gui       - Open project in Vivado GUI"
 	@echo "  vivado-clean     - Clean Vivado build"
 	@echo ""
+	@echo "Simulation targets:"
+	@echo "  sim              - Run default simulation (SoC top-level)"
+	@echo "  sim-soc          - Simulate complete SoC"
+	@echo "  sim-pwm          - Simulate PWM accelerator only"
+	@echo "  sim-uart         - Simulate UART peripheral only"
+	@echo "  sim-protection   - Simulate protection peripheral only"
+	@echo "  sim-all          - Run all simulations"
+	@echo "  sim-iverilog-soc - Simulate with Icarus Verilog (open-source)"
+	@echo "  sim-iverilog-pwm - Simulate PWM with Icarus Verilog"
+	@echo "  view-wave-soc    - View SoC waveform (GTKWave)"
+	@echo "  view-wave-pwm    - View PWM waveform (GTKWave)"
+	@echo "  sim-clean        - Clean simulation files"
+	@echo ""
 	@echo "Utility targets:"
 	@echo "  uart-monitor     - Connect to UART (115200 baud)"
-	@echo "  sim              - Run simulation"
 	@echo "  help             - Show this help"
 	@echo ""
 	@echo "Prerequisites:"
