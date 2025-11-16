@@ -129,7 +129,7 @@ Auxiliary 12V Supply
        └────── [DC-DC 2: 12V→15V Isolated] ──── H-Bridge 2 (4× TLP250)
 ```
 
-**No Level Shifters Required:** TLP250 LED input operates at 1.2V forward voltage, directly compatible with STM32F303's 3.3V GPIO (with 150Ω series resistor).
+**No Level Shifters Required:** TLP250 LED input operates at 1.2V forward voltage, directly compatible with STM32F401RE's 3.3V GPIO (with 150Ω series resistor).
 
 **Gate Driver Section Total:** ~$37.00
 

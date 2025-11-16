@@ -145,7 +145,7 @@ Stage 8: Full System Testing (refer to separate testing doc)
 - [ ] 8× TLP250 optocoupler gate drivers (DIP-8)
 - [ ] 1× ACS724 current sensor
 - [ ] 1× AMC1301 voltage sensor
-- [ ] 1× STM32 Nucleo-F303 board
+- [ ] 1× STM32 Nucleo-F401RE board
 - [ ] All passives (resistors, capacitors)
 - [ ] 8× 150Ω resistors (LED current limiting for TLP250)
 - [ ] 8× 10Ω gate resistors
@@ -834,7 +834,7 @@ After successful initial power-up:
 │  │  ┌───────────┐      ┌──────────────┐  │                 │
 │  │  │ STM32     │──PWM→│ TLP250 ×8    │  │                 │
 │  │  │ Nucleo    │      │ (Optocoupler)│  │                 │
-│  │  │ F303      │      │ Gate Drivers │  │                 │
+│  │  │ F401RE    │      │ Gate Drivers │  │                 │
 │  │  └───────────┘      └──────┬───────┘  │                 │
 │  │                            │           │                 │
 │  │      +15V Iso1, Iso2 ──────┘           │                 │
@@ -870,7 +870,6 @@ After successful initial power-up:
 - Updated component checklist to include TLP250 optocouplers and DC-DC converters
 - Replaced IR2110 references with TLP250 throughout
 - Updated MOSFET specification from IRF540N to IRFZ44N
-- Updated microcontroller from STM32F401RE to STM32F303
 - Added isolated power supply requirements (2× DC-DC converters)
 - Updated system wiring diagram to show TLP250 and isolated DC-DC architecture
 - Added TLP250 integration notes (isolation barrier, resistor values)
