@@ -27,12 +27,13 @@
 This project implements a complete control system for a **5-level cascaded H-bridge multilevel inverter**. The project follows a progressive implementation path from simulation through multiple hardware platforms.
 
 ### Technical Specifications
-- **Power Output:** 400W, 80V RMS
-- **Input:** 2× 40V DC isolated sources (2 H-bridges)
+- **Power Output:** 500W, 100V RMS
+- **Input:** 2× 50V DC isolated sources (2 H-bridges)
 - **Control:** Digital PR (Proportional-Resonant) current control + PI voltage control
 - **Switching Frequency:** 10 kHz
 - **Target THD:** < 5%
-- **Topology:** 2 Cascaded H-Bridges (8 switches) → 5 voltage levels (+2V, +V, 0, -V, -2V)
+- **Topology:** 2 Cascaded H-Bridges (8 switches) → 5 voltage levels (+100V, +50V, 0, -50V, -100V)
+- **Modulation:** Level-shifted carriers (carrier 1: -1 to 0, carrier 2: 0 to +1)
 
 ### Development Stages
 1. **✅ Stage 1: MATLAB/Simulink** - System modeling and control validation
@@ -46,8 +47,8 @@ This project implements a complete control system for a **5-level cascaded H-bri
 The project is currently in **Stage 2** focusing on:
 - STM32F401RE microcontroller implementation
 - Dual-timer PWM generation (TIM1 + TIM8) with dead-time insertion
-- Timer synchronization for 2 H-bridges (8 switches total)
-- 5-level cascaded modulation strategy
+- Level-shifted carrier modulation for 2 H-bridges (8 switches total)
+- 5-level output synthesis (+100V to -100V in 50V steps)
 - Hardware abstraction layers for future portability
 
 ---
@@ -675,11 +676,11 @@ open 07-docs/*.png
 ### Electrical Specifications
 | Parameter | Value | Unit |
 |-----------|-------|------|
-| Output Power | 400 | W |
-| Output Voltage (RMS) | 80 | V |
+| Output Power | 500 | W |
+| Output Voltage (RMS) | 100 | V |
 | Output Frequency | 50/60 | Hz |
-| DC Input (per cell) | 40 | V |
-| Number of Cells | 4 | - |
+| DC Input (per cell) | 50 | V |
+| Number of Cells | 2 | - |
 | Switching Frequency | 10 | kHz |
 | Dead-time | 1 | μs |
 | Target THD | < 5 | % |
