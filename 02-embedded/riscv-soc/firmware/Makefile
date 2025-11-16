@@ -3,7 +3,8 @@
 # ==============================================================================
 
 # RISC-V toolchain
-PREFIX = riscv32-unknown-elf-
+# Note: riscv64-unknown-elf-gcc can compile for 32-bit targets with -march=rv32imc
+PREFIX = riscv64-unknown-elf-
 
 CC = $(PREFIX)gcc
 AS = $(PREFIX)as
