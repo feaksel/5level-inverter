@@ -145,23 +145,39 @@ module soc_top #(
     // Memory: ROM (32 KB)
     //==========================================================================
 
-    wire [14:0] rom_addr;
-    wire        rom_stb;
+    // ROM is accessed from BOTH instruction bus (ibus) and data bus (dbus)
+    // - ibus: for code fetch
+    // - dbus: for constant data reads (via interconnect)
+    // Simple priority arbiter: ibus has priority
+
+    wire [14:0] rom_addr_dbus;   // From data bus (via interconnect)
+    wire        rom_stb_dbus;    // From data bus
+    wire        rom_ack_dbus;    // To data bus
+
     wire [31:0] rom_dat_o;
     wire        rom_ack;
+
+    // Instruction bus request
+    wire rom_req_ibus = cpu_ibus_stb && cpu_ibus_cyc;
+
+    // ROM arbiter: prioritize instruction bus
+    wire [14:0] rom_addr_mux = rom_req_ibus ? cpu_ibus_addr[14:0] : rom_addr_dbus;
+    wire        rom_stb_mux  = rom_req_ibus ? rom_req_ibus : rom_stb_dbus;
 
     rom_32kb #(
         .MEM_FILE("firmware/firmware.hex")
     ) rom (
         .clk(clk),
-        .addr({cpu_ibus_addr[14:0]}),
-        .stb(rom_stb),
+        .addr(rom_addr_mux),
+        .stb(rom_stb_mux),
         .data_out(rom_dat_o),
         .ack(rom_ack)
     );
 
+    // Route ack to appropriate bus
     assign cpu_ibus_dat = rom_dat_o;
-    assign cpu_ibus_ack = rom_ack;
+    assign cpu_ibus_ack = rom_req_ibus ? rom_ack : 1'b0;
+    assign rom_ack_dbus = !rom_req_ibus ? rom_ack : 1'b0;
 
     //==========================================================================
     // Memory: RAM (64 KB)
@@ -391,11 +407,11 @@ module soc_top #(
         .m_wb_ack(cpu_dbus_ack),
         .m_wb_err(cpu_dbus_err),
 
-        // Slave: ROM
-        .rom_addr(rom_addr),
-        .rom_stb(rom_stb),
+        // Slave: ROM (data bus access only)
+        .rom_addr(rom_addr_dbus),
+        .rom_stb(rom_stb_dbus),
         .rom_dat_o(rom_dat_o),
-        .rom_ack(rom_ack),
+        .rom_ack(rom_ack_dbus),
 
         // Slave: RAM
         .ram_addr(ram_addr),
