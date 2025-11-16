@@ -1,0 +1,35 @@
+Vivado Simulator v2025.1.0
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+Running: C:/Xilinx/2025.1/Vivado/bin/unwrapped/win64.o/xelab.exe --incr --debug typical --relax --mt 2 -L xil_defaultlib -L unisims_ver -L unimacro_ver -L secureip --snapshot soc_top_tb_behav xil_defaultlib.soc_top_tb xil_defaultlib.glbl -log elaborate.log 
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+WARNING: [VRFC 10-3091] actual bit length 16 differs from formal bit length 8 for port 'deadtime' [C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/peripherals/pwm_accelerator.v:133]
+WARNING: [VRFC 10-3091] actual bit length 16 differs from formal bit length 8 for port 'deadtime' [C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/peripherals/pwm_accelerator.v:147]
+WARNING: [VRFC 10-3091] actual bit length 16 differs from formal bit length 8 for port 'deadtime' [C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/peripherals/pwm_accelerator.v:161]
+WARNING: [VRFC 10-3091] actual bit length 16 differs from formal bit length 8 for port 'deadtime' [C:/Users/furka/Documents/5level-inverter/02-embedded/riscv-soc/rtl/peripherals/pwm_accelerator.v:175]
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module xil_defaultlib.StreamFifo
+Compiling module xil_defaultlib.StreamFifoLowLatency
+Compiling module xil_defaultlib.VexRiscv
+Compiling module xil_defaultlib.vexriscv_wrapper
+Compiling module xil_defaultlib.rom_32kb(MEM_FILE="firmware.mem"...
+Compiling module xil_defaultlib.ram_64kb_default
+Compiling module xil_defaultlib.carrier_generator_default
+Compiling module xil_defaultlib.sine_generator
+Compiling module xil_defaultlib.pwm_comparator
+Compiling module xil_defaultlib.pwm_accelerator
+Compiling module xil_defaultlib.adc_interface
+Compiling module xil_defaultlib.protection
+Compiling module xil_defaultlib.timer
+Compiling module xil_defaultlib.gpio
+Compiling module xil_defaultlib.uart_default
+Compiling module xil_defaultlib.wishbone_interconnect
+Compiling module xil_defaultlib.soc_top
+Compiling module xil_defaultlib.soc_top_tb
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot soc_top_tb_behav

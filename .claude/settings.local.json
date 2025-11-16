@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mingw32-make:*)",
+      "Bash(where:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(/c/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objdump:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

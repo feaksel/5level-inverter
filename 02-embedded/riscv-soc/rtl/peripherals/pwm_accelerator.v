@@ -69,6 +69,12 @@ module pwm_accelerator #(
     end
 
     //==========================================================================
+    // Enable gating (disable on fault)
+    //==========================================================================
+
+    wire enable_gated = enable && !fault;
+
+    //==========================================================================
     // Carrier Generator
     //==========================================================================
 
@@ -77,11 +83,11 @@ module pwm_accelerator #(
 
     carrier_generator #(
         .CARRIER_WIDTH(16),
-        .CLK_FREQ(CLK_FREQ),
-        .PWM_FREQ(PWM_FREQ)
+        .COUNTER_WIDTH(16)
     ) carrier_gen (
         .clk(clk),
         .rst_n(rst_n),
+        .enable(enable_gated),
         .freq_div(freq_div),
         .carrier1(carrier1),      // -32768 to 0 (H-bridge 1)
         .carrier2(carrier2),      // 0 to +32767 (H-bridge 2)
@@ -95,13 +101,17 @@ module pwm_accelerator #(
     wire signed [15:0] sine_ref;
 
     sine_generator #(
-        .SINE_WIDTH(16)
+        .DATA_WIDTH(16),
+        .PHASE_WIDTH(32),
+        .LUT_ADDR_WIDTH(8)
     ) sine_gen (
         .clk(clk),
         .rst_n(rst_n),
-        .freq_control(sine_freq),
-        .mod_index(mod_index),
-        .sine_out(sine_ref)
+        .enable(enable),
+        .freq_increment({sine_freq, 16'd0}),  // Convert to 32-bit phase increment
+        .modulation_index(mod_index),
+        .sine_out(sine_ref),
+        .phase()  // Not used
     );
 
     // Reference selection (auto sine or CPU-provided)
@@ -110,8 +120,6 @@ module pwm_accelerator #(
     //==========================================================================
     // PWM Comparators (4 instances for 8 outputs)
     //==========================================================================
-
-    wire enable_gated = enable && !fault;  // Disable on fault
 
     // H-Bridge 1, Leg 1 (S1, S2) - uses carrier1
     pwm_comparator #(
