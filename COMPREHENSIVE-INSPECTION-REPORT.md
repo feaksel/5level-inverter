@@ -92,6 +92,7 @@ All tracks have been inspected for:
 | `inverter_5level_top.v` | ~200 | ✅ Excellent | Integration clean |
 | `carrier_generator_tb.v` | ~100 | ✅ Good | Testbench present |
 | `inverter_5level_top_tb.v` | ~150 | ✅ Good | System testbench |
+| `constraints/inverter_artix7.xdc` | 166 | ✅ Complete | Pin mapping for Artix-7 |
 | `Makefile` | ~80 | ✅ Complete | Build automation |
 
 #### Code Quality Verification
@@ -865,14 +866,13 @@ compare_with_simulink('real_data.mat', 'sim_data.mat')
 4. **Expand Track 4 README** - Add tool usage examples
 
 ### Low Priority
-5. **Add constraints file** to Track 2 FPGA (referenced but missing)
-6. **Create .gitignore** for build artifacts
-7. **Add LICENSE file** for open-source distribution
+5. **Create .gitignore** for build artifacts
+6. **Add LICENSE file** for open-source distribution
 
 ### Nice to Have
-8. Create CI/CD pipeline for automated testing
-9. Add more testbenches for FPGA modules
-10. Create video tutorials for complex topics
+7. Create CI/CD pipeline for automated testing
+8. Add more testbenches for FPGA modules
+9. Create video tutorials for complex topics
 
 ---
 
@@ -932,8 +932,7 @@ This is a **production-quality, educational project** with:
 ### Issues Summary:
 - **Critical:** 0
 - **Major:** 0
-- **Minor:** 2 (minimal READMEs)
-- **Trivial:** 1 (missing constraints file reference)
+- **Minor:** 2 (minimal READMEs - now fixed)
 
 **All critical and major issues: RESOLVED**
 
@@ -982,7 +981,7 @@ This is a **production-quality, educational project** with:
 - README.md, Makefile
 - rtl/: carrier_generator.v, pwm_comparator.v, sine_generator.v, inverter_5level_top.v
 - tb/: carrier_generator_tb.v, inverter_5level_top_tb.v
-- (constraints/ - directory exists, files TBD)
+- constraints/: inverter_artix7.xdc
 
 **Track 2.5 (STM32): 24 files**
 - README.md, IMPLEMENTATION_GUIDE.md, Makefile
