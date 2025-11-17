@@ -19,7 +19,7 @@ module soc_top_tb;
     // Parameters
     //==========================================================================
 
-    parameter CLK_PERIOD = 20;  // 50 MHz input clock (matches SoC CLK_FREQ parameter)
+    parameter CLK_PERIOD = 10;  // 100 MHz input clock (SoC divides by 2 to get 50 MHz)
 
     //==========================================================================
     // Signals
