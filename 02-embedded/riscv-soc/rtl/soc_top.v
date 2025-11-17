@@ -63,16 +63,12 @@ module soc_top #(
      */
 
     reg clk_50mhz;
-    reg clk_div;
 
     always @(posedge clk_100mhz or negedge rst_n) begin
         if (!rst_n) begin
-            clk_div <= 1'b0;
             clk_50mhz <= 1'b0;
         end else begin
-            clk_div <= ~clk_div;
-            if (clk_div)
-                clk_50mhz <= ~clk_50mhz;
+            clk_50mhz <= ~clk_50mhz;  // Toggle every cycle = divide by 2
         end
     end
 
