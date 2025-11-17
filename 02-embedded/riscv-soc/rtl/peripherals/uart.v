@@ -120,7 +120,8 @@ module uart #(
             case (tx_state)
                 TX_IDLE: begin
                     uart_tx <= 1'b1;
-                    tx_empty <= 1'b1;
+                    // tx_empty is set in TX_STOP when transmission completes
+                    // Removed race condition: was setting tx_empty=1 every cycle here
                     tx_baud_counter <= 16'd0;
 
                     if (tx_enable && tx_start) begin
@@ -163,6 +164,7 @@ module uart #(
                     if (tx_baud_counter >= baud_div - 1) begin
                         tx_state <= TX_IDLE;
                         tx_baud_counter <= 16'd0;
+                        tx_empty <= 1'b1;  // Set tx_empty when transmission completes
                     end
                 end
             endcase

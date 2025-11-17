@@ -1,0 +1,33 @@
+# Simulation artifacts
+sim/*.vvp
+sim/*.vcd
+sim/*.out
+sim/*.log
+
+# Vivado project files (keep project structure, ignore generated files)
+vivado_project/.Xil/
+vivado_project/xsim.dir/
+vivado_project/vivado*.jou
+vivado_project/vivado*.log
+vivado_project/*.str
+vivado_project/*.wdb
+vivado_project/*.wcfg
+
+# Compiled firmware
+firmware/*.bin
+firmware/*.elf
+firmware/*.hex
+firmware/*.lst
+firmware/*.map
+firmware/*.o
+
+# Editor/IDE files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
