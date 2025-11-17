@@ -161,7 +161,7 @@ module soc_top #(
     wire        rom_stb_mux  = rom_req_ibus ? rom_req_ibus : rom_stb_dbus;
 
     rom_32kb #(
-        .MEM_FILE("firmware.mem")
+        .MEM_FILE("comprehensive_test.mem")
     ) rom (
         .clk(clk),
         .addr(rom_addr_mux),
