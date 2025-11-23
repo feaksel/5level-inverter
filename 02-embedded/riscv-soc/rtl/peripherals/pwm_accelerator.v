@@ -75,10 +75,10 @@ module pwm_accelerator #(
     wire enable_gated = enable && !fault;
 
     //==========================================================================
-    // Carrier Generator
+    // Carrier Generator (4 carriers for 5-level cascaded H-bridge)
     //==========================================================================
 
-    wire signed [15:0] carrier1, carrier2;
+    wire signed [15:0] carrier1, carrier2, carrier3, carrier4;
     wire carrier_sync;
 
     carrier_generator #(
@@ -89,8 +89,10 @@ module pwm_accelerator #(
         .rst_n(rst_n),
         .enable(enable_gated),
         .freq_div(freq_div),
-        .carrier1(carrier1),      // -32768 to 0 (H-bridge 1)
-        .carrier2(carrier2),      // 0 to +32767 (H-bridge 2)
+        .carrier1(carrier1),      // -32768 to -16384 (H-bridge 1)
+        .carrier2(carrier2),      // -16384 to 0       (H-bridge 2)
+        .carrier3(carrier3),      // 0 to +16384       (H-bridge 3)
+        .carrier4(carrier4),      // +16384 to +32767  (H-bridge 4)
         .sync_pulse(carrier_sync)
     );
 
@@ -108,7 +110,7 @@ module pwm_accelerator #(
         .clk(clk),
         .rst_n(rst_n),
         .enable(enable),
-        .freq_increment({sine_freq, 16'd0}),  // Convert to 32-bit phase increment
+        .freq_increment({8'd0, sine_freq, 8'd0}),  // FIXED: Use middle 16 bits for finer frequency control
         .modulation_index(mod_index),
         .sine_out(sine_ref),
         .phase()  // Not used
@@ -121,7 +123,7 @@ module pwm_accelerator #(
     // PWM Comparators (4 instances for 8 outputs)
     //==========================================================================
 
-    // H-Bridge 1, Leg 1 (S1, S2) - uses carrier1
+    // H-Bridge 1 (S1, S1') - uses carrier1 (-32768 to -16384)
     pwm_comparator #(
         .DATA_WIDTH(16)
     ) pwm_comp1 (
@@ -135,7 +137,7 @@ module pwm_accelerator #(
         .pwm_low(pwm_out[1])
     );
 
-    // H-Bridge 1, Leg 2 (S3, S4) - uses carrier1
+    // H-Bridge 2 (S2, S2') - uses carrier2 (-16384 to 0)
     pwm_comparator #(
         .DATA_WIDTH(16)
     ) pwm_comp2 (
@@ -143,13 +145,13 @@ module pwm_accelerator #(
         .rst_n(rst_n),
         .enable(enable_gated),
         .reference(reference),
-        .carrier(carrier1),
+        .carrier(carrier2),
         .deadtime(deadtime_cycles),
         .pwm_high(pwm_out[2]),
         .pwm_low(pwm_out[3])
     );
 
-    // H-Bridge 2, Leg 1 (S5, S6) - uses carrier2
+    // H-Bridge 3 (S3, S3') - uses carrier3 (0 to +16384)
     pwm_comparator #(
         .DATA_WIDTH(16)
     ) pwm_comp3 (
@@ -157,13 +159,13 @@ module pwm_accelerator #(
         .rst_n(rst_n),
         .enable(enable_gated),
         .reference(reference),
-        .carrier(carrier2),
+        .carrier(carrier3),
         .deadtime(deadtime_cycles),
         .pwm_high(pwm_out[4]),
         .pwm_low(pwm_out[5])
     );
 
-    // H-Bridge 2, Leg 2 (S7, S8) - uses carrier2
+    // H-Bridge 4 (S4, S4') - uses carrier4 (+16384 to +32767)
     pwm_comparator #(
         .DATA_WIDTH(16)
     ) pwm_comp4 (
@@ -171,7 +173,7 @@ module pwm_accelerator #(
         .rst_n(rst_n),
         .enable(enable_gated),
         .reference(reference),
-        .carrier(carrier2),
+        .carrier(carrier4),
         .deadtime(deadtime_cycles),
         .pwm_high(pwm_out[6]),
         .pwm_low(pwm_out[7])

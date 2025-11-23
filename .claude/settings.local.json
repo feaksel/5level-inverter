@@ -5,7 +5,18 @@
       "Bash(where:*)",
       "Bash(git checkout:*)",
       "Bash(cat:*)",
-      "Bash(/c/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objdump:*)"
+      "Bash(/c/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objdump:*)",
+      "Bash(tree:*)",
+      "Bash(verilator:*)",
+      "Bash(make sim-verilator-pwm:*)",
+      "Bash(make:*)",
+      "Bash(iverilog:*)",
+      "Bash(./obj_dir_protection/Vprotection_tb)",
+      "Bash(./obj_dir_uart/Vuart_tb)",
+      "Bash(chmod:*)",
+      "Bash(./run_verilator_tests.sh:*)",
+      "Bash(./obj_dir_pwm/Vpwm_accelerator_tb)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

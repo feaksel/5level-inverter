@@ -1,0 +1,131 @@
+// RISC-V 5-Level Inverter Control Firmware - FIXED FREQ_DIV BUG!
+// Entry: Initialize stack at top of RAM
+00010137
+fff10113
+// UART init (base 0x00020500)
+000205b7
+50058593
+// Set UART baud rate: 50MHz / 115200 = 434
+1b200513
+00c5a623
+// Enable UART TX/RX
+00300513
+0085a423
+// Send 'S' (System Start)
+05300513
+0045a703
+00277713
+fe070ee3
+00a5a023
+// Protection init (base 0x00020200)
+000202b7
+20028293
+// Clear all latched faults
+00f00513
+0082a423
+// Disable watchdog (enable only OCP+OVP+ESTOP = 0x07)
+00700513
+0042a223
+// Kick watchdog immediately
+deadc537
+00a2a823
+// Set watchdog timeout = 50M cycles = 1 second
+02faf537
+08050513
+00a2a623
+// Send 'P'
+05000513
+0045a703
+00277713
+fe070ee3
+00a5a023
+// PWM init (base 0x00020000)
+00020337
+// Disable PWM first
+00000513
+00a32023
+// Set FREQ_DIV = 5000 for 5kHz carrier @ 50MHz
+// 5000 = 0x1388
+00001537
+38850513
+00a32223
+// Set SINE_FREQ = 17 for 50 Hz AC output (HARDWARE FIXED!)
+// New formula: freq_increment = {8'd0, sine_freq, 8'd0} = sine_freq * 256
+// f_out = (17 * 256 * 50MHz) / 2^32 = 50.664 Hz (1.3% error - excellent!)
+// 17 = 0x0011
+01100513
+00a32823
+// Set dead-time = 50 cycles (1us @ 50MHz)
+03200513
+00a32a23
+// Set modulation index = 32767 (100%) for 4-carrier 5-level operation!
+// 32767 = 0x7FFF - needed for full-range sine across all 4 carriers
+00008537
+fff50513
+00a32423
+// Send 'W'
+05700513
+0045a703
+00277713
+fe070ee3
+00a5a023
+// Enable PWM (CTRL = 1: enable=1, mode=0 for AUTO sine!)
+// mode=0 uses sine generator, mode=1 uses cpu_reference (which is 0!)
+00100513
+00a32023
+// Send 'R'
+05200513
+0045a703
+00277713
+fe070ee3
+00a5a023
+// GPIO init
+00020e37
+400e0e13
+00f00513
+008e2423
+00100513
+00ae2023
+// Main loop
+deadc537
+00000e93
+// Kick watchdog FIRST
+00a2a823
+// Check faults
+0002a703
+00071a63
+// ADC read
+00020fb7
+100f8f93
+00100513
+00afa023
+004fa703
+00177713
+fe071ee3
+008fa503
+// Toggle LED
+000e2703
+00476713
+00ee2023
+// Delay
+01000f13
+ffff0f13
+fe0f1ee3
+001e8e93
+fb1ff06f
+// Fault handler - recover
+00f00513
+0082a423
+deadc537
+00a2a823
+00100513
+00a32023
+05200513
+0045a703
+00277713
+fe070ee3
+00a5a023
+f81ff06f
+00000013
+00000013
+0000006f

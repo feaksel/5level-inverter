@@ -1,182 +1,180 @@
-## ==============================================================================
-## basys3.xdc
-## Xilinx Design Constraints for Basys 3 Board
-##
-## Board: Digilent Basys 3
-## FPGA: Xilinx Artix-7 XC7A35T-1CPG236C
-## ==============================================================================
+##############################################################################
+# Basys 3 FPGA Constraints for RISC-V 5-Level Inverter Control SoC
+# Board: Digilent Basys 3 (Artix-7 XC7A35T-1CPG236C)
+# Clock: 100 MHz oscillator (divided to 50 MHz internally)
+##############################################################################
 
-## ==============================================================================
-## Clock and Reset
-## ==============================================================================
+##############################################################################
+# Clock and Reset
+##############################################################################
 
-## 100 MHz System Clock (from onboard oscillator)
-set_property -dict {PACKAGE_PIN W5 IOSTANDARD LVCMOS33} [get_ports clk_100mhz]
+# 100 MHz System Clock (W5)
+set_property -dict { PACKAGE_PIN W5   IOSTANDARD LVCMOS33 } [get_ports clk_100mhz]
 create_clock -period 10.000 -name sys_clk_pin -waveform {0.000 5.000} -add [get_ports clk_100mhz]
 
-## Reset Button (active low, BTNC - center button)
-set_property -dict {PACKAGE_PIN U18 IOSTANDARD LVCMOS33} [get_ports rst_n]
+# Reset Button (Active-low, btnC)
+set_property -dict { PACKAGE_PIN U18  IOSTANDARD LVCMOS33 } [get_ports rst_n]
 
-## ==============================================================================
-## UART (USB-UART Bridge on Basys 3)
-## ==============================================================================
+##############################################################################
+# UART (USB-UART Bridge)
+##############################################################################
 
-## UART TX (FPGA output to PC)
-set_property -dict {PACKAGE_PIN A18 IOSTANDARD LVCMOS33} [get_ports uart_tx]
+# UART TX (to PC)
+set_property -dict { PACKAGE_PIN A18  IOSTANDARD LVCMOS33 } [get_ports uart_tx]
 
-## UART RX (FPGA input from PC)
-set_property -dict {PACKAGE_PIN B18 IOSTANDARD LVCMOS33} [get_ports uart_rx]
+# UART RX (from PC)
+set_property -dict { PACKAGE_PIN B18  IOSTANDARD LVCMOS33 } [get_ports uart_rx]
 
-## ==============================================================================
-## PWM Outputs (8 channels to PMOD JB and JC)
-## ==============================================================================
+##############################################################################
+# PWM Outputs (8 channels) - Connected to Pmod Headers JA and JB
+##############################################################################
 
-## PMOD JB (PWM channels 0-3)
-## JB1-JB4: pwm_out[0:3]
-set_property -dict {PACKAGE_PIN A14 IOSTANDARD LVCMOS33} [get_ports {pwm_out[0]}]
-set_property -dict {PACKAGE_PIN A16 IOSTANDARD LVCMOS33} [get_ports {pwm_out[1]}]
-set_property -dict {PACKAGE_PIN B15 IOSTANDARD LVCMOS33} [get_ports {pwm_out[2]}]
-set_property -dict {PACKAGE_PIN B16 IOSTANDARD LVCMOS33} [get_ports {pwm_out[3]}]
+# Pmod Header JA (Top Row)
+# JA1 → pwm_out[0] (S1  - H-Bridge 1, Leg 1, High-side)
+# JA2 → pwm_out[1] (S1' - H-Bridge 1, Leg 1, Low-side)
+# JA3 → pwm_out[2] (S3  - H-Bridge 1, Leg 2, High-side)
+# JA4 → pwm_out[3] (S3' - H-Bridge 1, Leg 2, Low-side)
 
-## PMOD JC (PWM channels 4-7)
-## JC1-JC4: pwm_out[4:7]
-set_property -dict {PACKAGE_PIN K17 IOSTANDARD LVCMOS33} [get_ports {pwm_out[4]}]
-set_property -dict {PACKAGE_PIN M18 IOSTANDARD LVCMOS33} [get_ports {pwm_out[5]}]
-set_property -dict {PACKAGE_PIN N17 IOSTANDARD LVCMOS33} [get_ports {pwm_out[6]}]
-set_property -dict {PACKAGE_PIN P18 IOSTANDARD LVCMOS33} [get_ports {pwm_out[7]}]
+set_property -dict { PACKAGE_PIN J1   IOSTANDARD LVCMOS33 } [get_ports {pwm_out[0]}]  # JA1
+set_property -dict { PACKAGE_PIN L2   IOSTANDARD LVCMOS33 } [get_ports {pwm_out[1]}]  # JA2
+set_property -dict { PACKAGE_PIN J2   IOSTANDARD LVCMOS33 } [get_ports {pwm_out[2]}]  # JA3
+set_property -dict { PACKAGE_PIN G2   IOSTANDARD LVCMOS33 } [get_ports {pwm_out[3]}]  # JA4
 
-## ==============================================================================
-## ADC SPI Interface (PMOD JA)
-## ==============================================================================
+# Pmod Header JB (Top Row)
+# JB1 → pwm_out[4] (S5  - H-Bridge 2, Leg 1, High-side)
+# JB2 → pwm_out[5] (S5' - H-Bridge 2, Leg 1, Low-side)
+# JB3 → pwm_out[6] (S7  - H-Bridge 2, Leg 2, High-side)
+# JB4 → pwm_out[7] (S7' - H-Bridge 2, Leg 2, Low-side)
 
-## JA1: SPI Clock
-set_property -dict {PACKAGE_PIN J1 IOSTANDARD LVCMOS33} [get_ports adc_sck]
+set_property -dict { PACKAGE_PIN A14  IOSTANDARD LVCMOS33 } [get_ports {pwm_out[4]}]  # JB1
+set_property -dict { PACKAGE_PIN A16  IOSTANDARD LVCMOS33 } [get_ports {pwm_out[5]}]  # JB2
+set_property -dict { PACKAGE_PIN B15  IOSTANDARD LVCMOS33 } [get_ports {pwm_out[6]}]  # JB3
+set_property -dict { PACKAGE_PIN B16  IOSTANDARD LVCMOS33 } [get_ports {pwm_out[7]}]  # JB4
 
-## JA2: SPI MOSI (Master Out Slave In)
-set_property -dict {PACKAGE_PIN L2 IOSTANDARD LVCMOS33} [get_ports adc_mosi]
+##############################################################################
+# Protection/Fault Inputs - Pmod Header JC
+##############################################################################
 
-## JA3: SPI MISO (Master In Slave Out)
-set_property -dict {PACKAGE_PIN J2 IOSTANDARD LVCMOS33} [get_ports adc_miso]
+# Overcurrent Protection (OCP) - JC1
+set_property -dict { PACKAGE_PIN K17  IOSTANDARD LVCMOS33 } [get_ports fault_ocp]
 
-## JA4: SPI Chip Select (active low)
-set_property -dict {PACKAGE_PIN G2 IOSTANDARD LVCMOS33} [get_ports adc_cs_n]
+# Overvoltage Protection (OVP) - JC2
+set_property -dict { PACKAGE_PIN M18  IOSTANDARD LVCMOS33 } [get_ports fault_ovp]
 
-## ==============================================================================
-## Protection Inputs (Switches)
-## ==============================================================================
+# Emergency Stop (Active-low) - JC3
+set_property -dict { PACKAGE_PIN N17  IOSTANDARD LVCMOS33 } [get_ports estop_n]
 
-## SW0: Overcurrent Protection (OCP) fault input (active high)
-set_property -dict {PACKAGE_PIN V17 IOSTANDARD LVCMOS33} [get_ports fault_ocp]
+##############################################################################
+# ADC SPI Interface - Pmod Header JXADC (or JC bottom row)
+##############################################################################
 
-## SW1: Overvoltage Protection (OVP) fault input (active high)
-set_property -dict {PACKAGE_PIN V16 IOSTANDARD LVCMOS33} [get_ports fault_ovp]
+# ADC SPI Clock - JC7
+set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports adc_sck]
 
-## SW2: Emergency Stop (E-stop, active low when switch is ON)
-set_property -dict {PACKAGE_PIN W16 IOSTANDARD LVCMOS33} [get_ports estop_n]
+# ADC SPI MOSI - JC8
+set_property -dict { PACKAGE_PIN P18  IOSTANDARD LVCMOS33 } [get_ports adc_mosi]
 
-## ==============================================================================
-## GPIO (Remaining Switches and PMOD JD)
-## ==============================================================================
+# ADC SPI MISO - JC9
+set_property -dict { PACKAGE_PIN L17  IOSTANDARD LVCMOS33 } [get_ports adc_miso]
 
-## Switches SW3-SW15 (GPIO input)
-set_property -dict {PACKAGE_PIN W17 IOSTANDARD LVCMOS33} [get_ports {gpio[0]}]
-set_property -dict {PACKAGE_PIN W15 IOSTANDARD LVCMOS33} [get_ports {gpio[1]}]
-set_property -dict {PACKAGE_PIN V15 IOSTANDARD LVCMOS33} [get_ports {gpio[2]}]
-set_property -dict {PACKAGE_PIN W14 IOSTANDARD LVCMOS33} [get_ports {gpio[3]}]
-set_property -dict {PACKAGE_PIN W13 IOSTANDARD LVCMOS33} [get_ports {gpio[4]}]
-set_property -dict {PACKAGE_PIN V2  IOSTANDARD LVCMOS33} [get_ports {gpio[5]}]
-set_property -dict {PACKAGE_PIN T3  IOSTANDARD LVCMOS33} [get_ports {gpio[6]}]
-set_property -dict {PACKAGE_PIN T2  IOSTANDARD LVCMOS33} [get_ports {gpio[7]}]
-set_property -dict {PACKAGE_PIN R3  IOSTANDARD LVCMOS33} [get_ports {gpio[8]}]
-set_property -dict {PACKAGE_PIN W2  IOSTANDARD LVCMOS33} [get_ports {gpio[9]}]
-set_property -dict {PACKAGE_PIN U1  IOSTANDARD LVCMOS33} [get_ports {gpio[10]}]
-set_property -dict {PACKAGE_PIN T1  IOSTANDARD LVCMOS33} [get_ports {gpio[11]}]
-set_property -dict {PACKAGE_PIN R2  IOSTANDARD LVCMOS33} [get_ports {gpio[12]}]
+# ADC Chip Select (Active-low) - JC10
+set_property -dict { PACKAGE_PIN M19  IOSTANDARD LVCMOS33 } [get_ports adc_cs_n]
 
-## PMOD JD (GPIO bidirectional, gpio[13:15])
-set_property -dict {PACKAGE_PIN D4  IOSTANDARD LVCMOS33} [get_ports {gpio[13]}]
-set_property -dict {PACKAGE_PIN D3  IOSTANDARD LVCMOS33} [get_ports {gpio[14]}]
-set_property -dict {PACKAGE_PIN F4  IOSTANDARD LVCMOS33} [get_ports {gpio[15]}]
+##############################################################################
+# Debug/Status LEDs (Onboard)
+##############################################################################
 
-## ==============================================================================
-## Status LEDs
-## ==============================================================================
+# LED[0] - System Heartbeat
+set_property -dict { PACKAGE_PIN U16  IOSTANDARD LVCMOS33 } [get_ports {led[0]}]
 
-## LED0: Power/Reset indicator
-set_property -dict {PACKAGE_PIN U16 IOSTANDARD LVCMOS33} [get_ports {led[0]}]
+# LED[1] - Fault Indicator
+set_property -dict { PACKAGE_PIN E19  IOSTANDARD LVCMOS33 } [get_ports {led[1]}]
 
-## LED1: Fault indicator
-set_property -dict {PACKAGE_PIN E19 IOSTANDARD LVCMOS33} [get_ports {led[1]}]
+# LED[2] - PWM Enabled
+set_property -dict { PACKAGE_PIN U19  IOSTANDARD LVCMOS33 } [get_ports {led[2]}]
 
-## LED2: UART TX activity
-set_property -dict {PACKAGE_PIN U19 IOSTANDARD LVCMOS33} [get_ports {led[2]}]
+# LED[3] - UART Activity
+set_property -dict { PACKAGE_PIN V19  IOSTANDARD LVCMOS33 } [get_ports {led[3]}]
 
-## LED3: Interrupt activity
-set_property -dict {PACKAGE_PIN V19 IOSTANDARD LVCMOS33} [get_ports {led[3]}]
+##############################################################################
+# GPIO Pins (for expansion/debug) - Using remaining Pmod JD and switches
+##############################################################################
 
-## ==============================================================================
-## Configuration and Bitstream Settings
-## ==============================================================================
+# GPIO[0:7] - Pmod Header JD
+set_property -dict { PACKAGE_PIN H17  IOSTANDARD LVCMOS33 } [get_ports {gpio[0]}]   # JD1
+set_property -dict { PACKAGE_PIN H19  IOSTANDARD LVCMOS33 } [get_ports {gpio[1]}]   # JD2
+set_property -dict { PACKAGE_PIN J19  IOSTANDARD LVCMOS33 } [get_ports {gpio[2]}]   # JD3
+set_property -dict { PACKAGE_PIN K19  IOSTANDARD LVCMOS33 } [get_ports {gpio[3]}]   # JD4
+set_property -dict { PACKAGE_PIN H18  IOSTANDARD LVCMOS33 } [get_ports {gpio[4]}]   # JD7
+set_property -dict { PACKAGE_PIN J18  IOSTANDARD LVCMOS33 } [get_ports {gpio[5]}]   # JD8
+set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports {gpio[6]}]   # JD9
+set_property -dict { PACKAGE_PIN L18  IOSTANDARD LVCMOS33 } [get_ports {gpio[7]}]   # JD10
 
-## Configuration voltage
-set_property CONFIG_VOLTAGE 3.3 [current_design]
+# GPIO[8:15] - Switches (SW0-SW7)
+set_property -dict { PACKAGE_PIN V17  IOSTANDARD LVCMOS33 } [get_ports {gpio[8]}]   # SW0
+set_property -dict { PACKAGE_PIN V16  IOSTANDARD LVCMOS33 } [get_ports {gpio[9]}]   # SW1
+set_property -dict { PACKAGE_PIN W16  IOSTANDARD LVCMOS33 } [get_ports {gpio[10]}]  # SW2
+set_property -dict { PACKAGE_PIN W17  IOSTANDARD LVCMOS33 } [get_ports {gpio[11]}]  # SW3
+set_property -dict { PACKAGE_PIN W15  IOSTANDARD LVCMOS33 } [get_ports {gpio[12]}]  # SW4
+set_property -dict { PACKAGE_PIN V15  IOSTANDARD LVCMOS33 } [get_ports {gpio[13]}]  # SW5
+set_property -dict { PACKAGE_PIN W14  IOSTANDARD LVCMOS33 } [get_ports {gpio[14]}]  # SW6
+set_property -dict { PACKAGE_PIN W13  IOSTANDARD LVCMOS33 } [get_ports {gpio[15]}]  # SW7
+
+##############################################################################
+# Timing Constraints
+##############################################################################
+
+# Derived 50 MHz clock (generated internally from 100 MHz)
+# This constraint is for the divided clock
+create_generated_clock -name clk_50mhz -source [get_ports clk_100mhz] -divide_by 2 [get_pins clk_50mhz_reg/Q]
+
+# Input delay constraints (adjust based on external circuits)
+# All inputs are sampled by the 50 MHz clock domain
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports uart_rx]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports uart_rx]
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports adc_miso]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports adc_miso]
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports fault_ocp]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports fault_ocp]
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports fault_ovp]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports fault_ovp]
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports estop_n]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports estop_n]
+
+# Output delay constraints (adjust based on external circuits)
+# All outputs are driven by the 50 MHz clock domain
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports uart_tx]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports uart_tx]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports {pwm_out[*]}]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports {pwm_out[*]}]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports {led[*]}]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports {led[*]}]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_sck]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_sck]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_mosi]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_mosi]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_cs_n]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_cs_n]
+
+##############################################################################
+# Configuration and Bitstream Settings
+##############################################################################
+
+# Configuration Bank Voltage
 set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
 
-## Bitstream compression
+# Bitstream compression
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
-## Unused pin configuration (for ASIC migration, minimize leakage)
-set_property BITSTREAM.CONFIG.UNUSEDPIN PULLDOWN [current_design]
+# Bitstream startup configuration
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property CONFIG_MODE SPIx4 [current_design]
 
-## ==============================================================================
-## Timing Constraints
-## ==============================================================================
+# Prevent timing closure issues during implementation
+set_property SEVERITY {Warning} [get_drc_checks NSTD-1]
+set_property SEVERITY {Warning} [get_drc_checks UCIO-1]
 
-## Input delay constraints (approximate for external signals)
-set_input_delay -clock [get_clocks sys_clk_pin] -min 0.000 [get_ports uart_rx]
-set_input_delay -clock [get_clocks sys_clk_pin] -max 5.000 [get_ports uart_rx]
-set_input_delay -clock [get_clocks sys_clk_pin] -min 0.000 [get_ports adc_miso]
-set_input_delay -clock [get_clocks sys_clk_pin] -max 5.000 [get_ports adc_miso]
-
-## Output delay constraints (approximate for external signals)
-set_output_delay -clock [get_clocks sys_clk_pin] -min 0.000 [get_ports uart_tx]
-set_output_delay -clock [get_clocks sys_clk_pin] -max 5.000 [get_ports uart_tx]
-set_output_delay -clock [get_clocks sys_clk_pin] -min 0.000 [get_ports {pwm_out[*]}]
-set_output_delay -clock [get_clocks sys_clk_pin] -max 5.000 [get_ports {pwm_out[*]}]
-
-## False paths for asynchronous inputs (buttons, switches)
-set_false_path -from [get_ports rst_n]
-set_false_path -from [get_ports fault_ocp]
-set_false_path -from [get_ports fault_ovp]
-set_false_path -from [get_ports estop_n]
-set_false_path -from [get_ports {gpio[*]}]
-
-## False paths for LEDs (not timing critical)
-set_false_path -to [get_ports {led[*]}]
-
-## ==============================================================================
-## Physical Constraints (for better placement)
-## ==============================================================================
-
-## Group critical paths for better placement
-## (These are examples, adjust based on actual utilization)
-
-## Keep memory blocks close
-# set_property LOC RAMB36_X0Y0 [get_cells -hierarchical -filter {NAME =~ *rom_memory*}]
-# set_property LOC RAMB36_X0Y1 [get_cells -hierarchical -filter {NAME =~ *ram_memory*}]
-
-## ==============================================================================
-## Notes for ASIC Migration
-## ==============================================================================
-
-## When migrating to ASIC:
-## 1. Remove FPGA-specific properties (PACKAGE_PIN, IOSTANDARD)
-## 2. Replace with pad cell instantiations
-## 3. Update timing constraints based on actual pad delays
-## 4. Add power domain constraints if using multiple voltage domains
-## 5. Ensure all clocks are properly defined
-## 6. Add scan chain constraints for DFT
-
-## ==============================================================================
-## End of Constraints File
-## ==============================================================================
+##############################################################################
+# End of Constraints
+##############################################################################

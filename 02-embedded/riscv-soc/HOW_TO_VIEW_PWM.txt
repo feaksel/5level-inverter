@@ -1,0 +1,162 @@
+================================================================================
+ HOW TO VIEW YOUR 5-LEVEL INVERTER PWM SIGNALS IN VIVADO
+================================================================================
+
+STEP 1: Run the automated waveform setup
+-----------------------------------------
+In Vivado Tcl Console:
+
+  source C:/Users/furka/Documents/riscv-soc-complete/RUN_AND_VIEW.tcl
+
+This single command launches simulation and sets up all signals.
+
+
+STEP 2: Understanding the PWM signal organization
+--------------------------------------------------
+The waveform shows 8 PWM channels organized by BRIDGE and COMPLEMENTARY PAIRS:
+
+  BRIDGE 2 (Cascaded Stage - adds voltage to Bridge 1):
+    CH7: S4' (orange) ───┐ Complementary pair
+    CH6: S4  (orange) ───┘ (dead-time gap between them)
+
+    CH5: S3' (cyan)   ───┐ Complementary pair
+    CH4: S3  (cyan)   ───┘ (dead-time gap between them)
+
+  BRIDGE 1 (Main Stage):
+    CH3: S2' (yellow) ───┐ Complementary pair
+    CH2: S2  (yellow) ───┘ (dead-time gap between them)
+
+    CH1: S1' (green)  ───┐ Complementary pair
+    CH0: S1  (green)  ───┘ (dead-time gap between them)
+
+
+STEP 3: What you should see
+----------------------------
+✓ MANY CYCLES of PWM switching (TEST 6 runs for 50,000 cycles = ~1ms)
+✓ Each complementary pair (S1/S1', S2/S2', S3/S3', S4/S4') has:
+    - Opposite switching patterns (when one is high, other is low)
+    - Small GAP between transitions (dead-time = 1 microsecond)
+✓ Frequency: ~5 kHz (200 microseconds period)
+✓ Duty cycle: ~50% (modulation index = 0.5)
+
+
+STEP 4: How the 5-LEVEL output is created
+------------------------------------------
+Each H-bridge can produce 3 voltage levels:
+  - Both top switches ON:     +Vdc
+  - Diagonal switches ON:      0V
+  - Both bottom switches ON:  -Vdc
+
+When Bridge 1 and Bridge 2 outputs are STACKED (in series):
+  Bridge1 + Bridge2 = Total Output
+    +Vdc  +  +Vdc  =  +2Vdc  (Level 5)
+    +Vdc  +   0V   =  +Vdc   (Level 4)
+     0V   +   0V   =   0V    (Level 3)
+    -Vdc  +   0V   =  -Vdc   (Level 2)
+    -Vdc  +  -Vdc  =  -2Vdc  (Level 1)
+
+
+STEP 5: Zoom levels to use
+---------------------------
+After simulation completes, try these zoom commands:
+
+  Full view (see all tests):
+    wave zoom full
+
+  See PWM switching clearly (one 200us cycle):
+    wave zoom range 100us 100.2us
+
+  See dead-time gaps in detail:
+    wave zoom range 100us 100.01us
+
+  See the analog carrier waves:
+    Look at "PWM Internals (Analog)" group
+    Right-click carriers -> Wave Properties -> Adjust height to 200
+
+
+STEP 6: Reading complementary pairs
+------------------------------------
+Pick any pair, for example S1 (CH0) and S1' (CH1):
+
+Time: 100.000us - 100.100us (half period, 100us high time)
+  CH0 (S1):  ▔▔▔▔▔▔▔▔▔▔▁▁▁▁▁▁▁▁▁▁  (high for 100us, low for 100us)
+  CH1 (S1'): ▁▁▁▁▁▁▁▁▁▁▔▔▔▔▔▔▔▔▔▔  (opposite of S1)
+             |<-1us->|             (DEAD-TIME GAP - both low briefly)
+
+The 1us gap prevents both switches from being on simultaneously
+(shoot-through protection).
+
+
+STEP 7: Verifying correct operation
+------------------------------------
+In the waveform, check:
+  ✓ All 8 channels are switching (not stuck at 0 or 1)
+  ✓ Complementary pairs are OPPOSITE (when CH0=1, CH1=0)
+  ✓ Dead-time gaps visible (zoom in to ~10ns resolution)
+  ✓ Switching continues for MANY cycles during TEST 6
+  ✓ PWM stops when protection tests inject faults (TEST 7)
+
+In the console output, check:
+  [PASS] PWM outputs active
+  [PASS] PWM not stuck high
+
+
+STEP 8: Understanding the sine modulation
+------------------------------------------
+Look at "PWM Internals (Analog)" group:
+  carrier1: Triangle wave (5 kHz, negative offset)
+  carrier2: Triangle wave (5 kHz, positive offset)
+  sine_ref: Sine wave (50 Hz reference)
+
+The PWM outputs switch when carriers cross the sine reference.
+This creates a 50 Hz sine wave in the output voltage when filtered.
+
+
+TROUBLESHOOTING
+---------------
+Q: "PWM signals only toggle once then stop"
+A: You're looking AFTER test 7 where faults are injected.
+   Zoom to TEST 6 region (around 100us - 1ms) to see active PWM.
+
+Q: "Can't see dead-time gaps"
+A: Zoom in more: wave zoom range 100us 100.01us
+   Dead-time is only 1 microsecond (50 clock cycles @ 50MHz)
+
+Q: "Signals look random"
+A: Normal! Level-shifted carrier modulation creates complex patterns.
+   Focus on ONE complementary pair at a time to see the pattern.
+
+Q: "How do I know which signals create which output level?"
+A: Look at the carrier waves in analog view. When both carriers are
+   above sine_ref, both bridges output +Vdc → Total = +2Vdc (Level 5)
+
+
+REFERENCE: Signal to Switch Mapping
+------------------------------------
+5-Level Cascaded H-Bridge Topology:
+
+  BRIDGE 1 (CH0-CH3):           BRIDGE 2 (CH4-CH7):
+   +Vdc                          +Vdc
+    │                             │
+   S1─┐                          S3─┐
+      ├── Load Leg A               ├── Load Leg A
+   S1'┘                          S3'┘
+    │                             │
+   GND                           GND
+    │                             │
+   S2─┐                          S4─┐
+      ├── Load Leg B               ├── Load Leg B
+   S2'┘                          S4'┘
+    │                             │
+  -Vdc                          -Vdc
+
+Output = Bridge1_out + Bridge2_out (series connection)
+
+
+QUICK START COMMAND
+-------------------
+source C:/Users/furka/Documents/riscv-soc-complete/RUN_AND_VIEW.tcl
+
+Done! Waveform is set up with all signals labeled and color-coded.
+
+================================================================================

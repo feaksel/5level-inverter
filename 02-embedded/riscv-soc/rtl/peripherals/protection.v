@@ -136,7 +136,9 @@ module protection #(
             watchdog_expired <= 1'b0;
         end else begin
             if (watchdog_counter >= watchdog_timeout) begin
+                // Stop counting once expired to prevent overflow wrap-around
                 watchdog_expired <= 1'b1;
+                watchdog_counter <= watchdog_timeout;  // Hold at timeout value
             end else begin
                 watchdog_counter <= watchdog_counter + 1;
             end

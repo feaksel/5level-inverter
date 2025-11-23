@@ -1,0 +1,72 @@
+# Verilator Makefile for PWM Verification
+
+# Verilator flags
+VERILATOR = verilator
+VERILATOR_FLAGS = -Wall -Wno-fatal --trace -cc --exe --build
+
+# Top module
+TOP_MODULE = riscv_soc_top
+
+# RTL files
+RTL_DIR = rtl
+RTL_FILES = \
+	$(RTL_DIR)/top/riscv_soc_top.v \
+	$(RTL_DIR)/cpu/vexriscv_wrapper.v \
+	$(RTL_DIR)/bus/wishbone_interconnect.v \
+	$(RTL_DIR)/memory/rom_wrapper.v \
+	$(RTL_DIR)/memory/ram_wb.v \
+	$(RTL_DIR)/peripherals/pwm_accelerator.v \
+	$(RTL_DIR)/peripherals/adc_spi_master.v \
+	$(RTL_DIR)/peripherals/protection.v \
+	$(RTL_DIR)/peripherals/timer.v \
+	$(RTL_DIR)/peripherals/gpio.v \
+	$(RTL_DIR)/peripherals/uart.v \
+	$(RTL_DIR)/utils/carrier_generator.v \
+	$(RTL_DIR)/utils/sine_generator.v \
+	$(RTL_DIR)/utils/pwm_comparator.v \
+	$(RTL_DIR)/utils/deadtime_inserter.v \
+	$(RTL_DIR)/utils/reset_sync.v \
+	$(RTL_DIR)/utils/clock_divider.v
+
+# C++ testbench
+CPP_TB = verify_pwm.cpp
+
+# Output executable
+EXE = obj_dir/V$(TOP_MODULE)
+
+# Include paths
+INCLUDE_DIRS = -I$(RTL_DIR) -I$(RTL_DIR)/cpu -I$(RTL_DIR)/peripherals
+
+# Build target
+all: $(EXE)
+
+$(EXE): $(RTL_FILES) $(CPP_TB)
+	@echo "========================================"
+	@echo "  Building with Verilator..."
+	@echo "========================================"
+	$(VERILATOR) $(VERILATOR_FLAGS) \
+		--top-module $(TOP_MODULE) \
+		$(INCLUDE_DIRS) \
+		$(RTL_FILES) \
+		$(CPP_TB)
+
+# Run simulation
+run: $(EXE)
+	@echo "========================================"
+	@echo "  Running PWM Verification..."
+	@echo "========================================"
+	./$(EXE)
+
+# View waveform
+wave:
+	@if [ -f waveform.vcd ]; then \
+		gtkwave waveform.vcd; \
+	else \
+		echo "No waveform.vcd found. Run 'make run' first."; \
+	fi
+
+# Clean
+clean:
+	rm -rf obj_dir waveform.vcd
+
+.PHONY: all run wave clean

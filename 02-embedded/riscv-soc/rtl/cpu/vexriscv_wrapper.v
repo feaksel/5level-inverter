@@ -237,7 +237,7 @@ module vexriscv_wrapper (
     // synthesis translate_off
     always @(posedge clk) begin
         if (ibus_cyc && ibus_ack) begin
-            $display("[IBUS] PC=0x%08x INST=0x%08x", ibus_addr, ibus_dat_i);
+//             $display("[IBUS] PC=0x%08x INST=0x%08x", ibus_addr, ibus_dat_i);
         end
         if (dbus_cyc && dbus_ack) begin
             if (dbus_we)
