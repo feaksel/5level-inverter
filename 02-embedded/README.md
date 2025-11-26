@@ -20,7 +20,7 @@ Stage 5-6: ASIC (Future)
 
 ## Directory Structure
 
-### `/stm32/` - STM32F401RE Implementation (Stage 2) ✅
+### `/stm32f401re/` - STM32F401RE Implementation (Stage 2A) ✅
 
 **Status:** Production-ready, complete implementation
 
@@ -46,12 +46,58 @@ Stage 5-6: ASIC (Future)
 
 **Quick Start:**
 ```bash
-cd stm32/
+cd stm32f401re/
 make clean all
 make flash
 ```
 
-See [`stm32/README.md`](stm32/README.md) for detailed documentation.
+See [`stm32f401re/README.md`](stm32f401re/README.md) for detailed documentation.
+
+---
+
+### `/stm32f303re/` - STM32F303RE Implementation (Stage 2B) ✅
+
+**Status:** Production-ready, complete implementation
+
+**Platform:** ARM Cortex-M4F @ 72 MHz with FPU
+
+**Advantages over F401RE:**
+- ✅ **4x 12-bit ADCs @ 5 MSPS** (vs 1x ADC on F401) - superior analog capabilities
+- ✅ **16KB Core-Coupled Memory (CCM)** - zero wait-state RAM for time-critical code
+- ✅ **7 built-in comparators** - hardware-accelerated protection
+- ✅ **4 built-in op-amps** - integrated signal conditioning
+- ✅ **Dual ADC mode** - simultaneous multi-channel sampling
+- ✅ **8 timers** - more flexible PWM generation
+
+**Features:**
+- ✅ 8-channel PWM generation (TIM1 + TIM8)
+- ✅ 5/10/20 kHz configurable switching frequency with 1 μs dead-time
+- ✅ Level-shifted carrier modulation
+- ✅ Enhanced 4-ADC current/voltage sensing (DMA-based)
+- ✅ Proportional-Resonant (PR) current controller
+- ✅ Safety protection (OCP, OVP)
+- ✅ Soft-start sequence
+- ✅ UART debug output @ 115200 baud
+- ✅ Data logger
+- ✅ 4 test modes
+- ✅ F303-optimized clock configuration (72 MHz)
+
+**Code Stats:**
+- Based on F401RE implementation
+- Adapted for F303RE specifications
+- Enhanced for superior analog performance
+- CCM RAM support in linker script
+
+**Quick Start:**
+```bash
+cd stm32f303re/
+make clean all
+make flash
+```
+
+**Best For:** Projects requiring precise multi-channel current sensing, advanced analog signal conditioning, or ultra-fast ISR execution.
+
+See [`stm32f303re/README.md`](stm32f303re/README.md) for detailed documentation.
 
 ---
 
@@ -101,20 +147,23 @@ make uart-monitor       # Monitor debug output
 
 ## Platform Comparison
 
-| Feature | STM32F401RE | RISC-V SoC |
-|---------|-------------|------------|
-| **CPU** | ARM Cortex-M4F @ 84 MHz | VexRiscv RV32IMC @ 50 MHz |
-| **Architecture** | Proprietary | Open-source RISC-V |
-| **Memory** | 512 KB Flash + 96 KB RAM | 32 KB ROM + 64 KB RAM |
-| **PWM Generation** | Timer peripherals (TIM1/TIM8) | Custom hardware accelerator |
-| **Dead-time** | Hardware timer | Custom RTL logic |
-| **Development** | STM32CubeIDE + HAL | Vivado + RISC-V GCC |
-| **Cost** | ~$15 (dev board) | ~$50 (FPGA board) |
-| **Power** | ~100 mW | ~500 mW (FPGA) |
-| **Scalability** | Limited by peripherals | Unlimited (add RTL modules) |
-| **Latency** | μs (interrupt-driven) | ns (hardware-accelerated) |
-| **Jitter** | ~100 ns | < 10 ns |
-| **ASIC Path** | Not applicable | Direct path to silicon |
+| Feature | STM32F401RE | STM32F303RE | RISC-V SoC |
+|---------|-------------|-------------|------------|
+| **CPU** | ARM Cortex-M4F @ 84 MHz | ARM Cortex-M4F @ 72 MHz | VexRiscv RV32IMC @ 50 MHz |
+| **Architecture** | Proprietary | Proprietary | Open-source RISC-V |
+| **Memory** | 512 KB Flash + 96 KB RAM | 512 KB Flash + 64 KB RAM + 16 KB CCM | 32 KB ROM + 64 KB RAM |
+| **ADC** | 1x 12-bit @ 2.4 MSPS | 4x 12-bit @ 5 MSPS | External 4-ch SPI ADC |
+| **Analog** | Basic | 7 comparators + 4 op-amps | None (external) |
+| **PWM Generation** | Timer peripherals (TIM1/TIM8) | Timer peripherals (TIM1/TIM8) | Custom hardware accelerator |
+| **Dead-time** | Hardware timer | Hardware timer | Custom RTL logic |
+| **Development** | STM32CubeIDE + HAL | STM32CubeIDE + HAL | Vivado + RISC-V GCC |
+| **Cost** | ~$15 (dev board) | ~$15 (dev board) | ~$50 (FPGA board) |
+| **Power** | ~100 mW | ~90 mW (lower clock) | ~500 mW (FPGA) |
+| **Scalability** | Limited by peripherals | Limited by peripherals | Unlimited (add RTL modules) |
+| **Latency** | μs (interrupt-driven) | μs (interrupt-driven) | ns (hardware-accelerated) |
+| **Jitter** | ~100 ns | ~100 ns | < 10 ns |
+| **Best For** | General purpose, high speed | Precision analog, multi-sensing | Custom hardware, ASIC path |
+| **ASIC Path** | Not applicable | Not applicable | Direct path to silicon |
 
 ---
 
@@ -151,10 +200,20 @@ The implementations follow increasing complexity:
 
 ### For STM32 Development:
 
+**STM32F401RE:**
 ```bash
-cd stm32/
+cd stm32f401re/
 # Edit source files in Core/Src/ and Core/Inc/
 make clean all        # Build project
+make flash            # Flash to hardware
+# Monitor via UART @ 115200 baud
+```
+
+**STM32F303RE:**
+```bash
+cd stm32f303re/
+# Edit source files in Core/Src/ and Core/Inc/
+make clean all        # Build project (optimized for 72 MHz)
 make flash            # Flash to hardware
 # Monitor via UART @ 115200 baud
 ```
@@ -164,6 +223,8 @@ make flash            # Flash to hardware
 - STM32CubeMX (optional)
 - ST-Link programmer
 - Serial terminal
+- For F401: STM32CubeF4 HAL libraries
+- For F303: STM32CubeF3 HAL libraries
 
 ### For RISC-V SoC Development:
 
@@ -198,7 +259,9 @@ make uart-monitor                 # Monitor output
 3. **Full Power Test** - Rated voltage with current monitoring
 4. **Performance Metrics** - THD, efficiency, thermal
 
-See [`stm32/README.md`](stm32/README.md) and [`07-docs/05-Hardware-Testing-Procedures.md`](../07-docs/05-Hardware-Testing-Procedures.md)
+**F401RE:** See [`stm32f401re/README.md`](stm32f401re/README.md)
+**F303RE:** See [`stm32f303re/README.md`](stm32f303re/README.md)
+**General:** See [`07-docs/05-Hardware-Testing-Procedures.md`](../07-docs/05-Hardware-Testing-Procedures.md)
 
 ### RISC-V SoC Testing:
 
@@ -216,6 +279,7 @@ See [`riscv-soc/01-IMPLEMENTATION-GUIDE.md`](riscv-soc/01-IMPLEMENTATION-GUIDE.m
 | Implementation | Status | Hardware Validated | Production Ready |
 |----------------|--------|-------------------|------------------|
 | **STM32F401RE** | ✅ Complete | 🟨 Ready for testing | ✅ Yes (code-complete) |
+| **STM32F303RE** | ✅ Complete | 🟨 Ready for testing | ✅ Yes (code-complete) |
 | **RISC-V SoC** | ✅ Complete | 🟨 FPGA synthesis passing | ✅ Yes (simulation-verified) |
 
 ---
@@ -246,9 +310,14 @@ See [`riscv-soc/01-IMPLEMENTATION-GUIDE.md`](riscv-soc/01-IMPLEMENTATION-GUIDE.m
 
 ## Getting Help
 
-### For STM32:
-- See [`stm32/README.md`](stm32/README.md)
-- See [`stm32/IMPLEMENTATION_GUIDE.md`](stm32/IMPLEMENTATION_GUIDE.md)
+### For STM32F401RE:
+- See [`stm32f401re/README.md`](stm32f401re/README.md)
+- See [`stm32f401re/IMPLEMENTATION_GUIDE.md`](stm32f401re/IMPLEMENTATION_GUIDE.md)
+- Check [`CLAUDE.md`](../CLAUDE.md) for development guidelines
+
+### For STM32F303RE:
+- See [`stm32f303re/README.md`](stm32f303re/README.md)
+- See [`stm32f303re/IMPLEMENTATION_GUIDE.md`](stm32f303re/IMPLEMENTATION_GUIDE.md)
 - Check [`CLAUDE.md`](../CLAUDE.md) for development guidelines
 
 ### For RISC-V SoC:
@@ -281,6 +350,7 @@ See main project LICENSE file.
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-11-26
 **Maintained By:** Project Team
-**Status:** Stage 2 (STM32) complete, Stage 3-4 (RISC-V SoC) complete, Stage 5-6 (ASIC) in planning
+**Status:** Stage 2 (STM32F401RE + STM32F303RE) complete, Stage 3-4 (RISC-V SoC) complete, Stage 5-6 (ASIC) in planning
+**Note:** Two STM32 implementations provided for different application requirements (F401RE for general purpose, F303RE for precision analog)
