@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mingw32-make:*)",
+      "Bash(where:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(/c/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objdump:*)",
+      "Bash(find:*)",
+      "Bash(for file in adc_sensing.h data_logger.h debug_uart.h pwm_control.h safety.h)",
+      "Bash(do sed -i 's/stm32f4xx_hal\\.h/stm32f3xx_hal.h/g' \"$file\")",
+      "Bash(done)",
+      "Bash(tree:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git config:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -d /c/Xilinx ])",
+      "Bash(then find /c/Xilinx -name vivado.bat)",
+      "Bash(else echo \"Xilinx directory not found\")",
+      "Bash(fi)",
+      "Bash(cmd.exe /c \"vivado -version 2>&1\")",
+      "Bash(cmd.exe:*)",
+      "Bash(./compile.bat)",
+      "Bash(cat:*)",
+      "Bash(if [ -f \"/c/Xilinx/Vivado/2025.1/settings64.sh\" ])",
+      "Bash(then echo \"Found Vivado 2025.1\")",
+      "Bash(source /c/Xilinx/Vivado/2025.1/settings64.sh)",
+      "Bash(elif [ -f \"/c/Xilinx/Vivado/2024.2/settings64.sh\" ])",
+      "Bash(then echo \"Found Vivado 2024.2\")",
+      "Bash(source /c/Xilinx/Vivado/2024.2/settings64.sh)",
+      "Bash(else echo \"Vivado not found in /c/Xilinx\")",
+      "Bash(chmod:*)",
+      "Bash(bash test_before_vivado.sh:*)",
+      "Bash(python3:*)",
+      "Bash(pacman -S:*)",
+      "Bash(/c/Xilinx/2025.1/Vivado/bin/vivado.bat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,273 @@
+# ===================================
+# 5-Level Inverter Project .gitignore
+# ===================================
+
+# =====================================
+# Build Artifacts - STM32
+# =====================================
+# Build directories
+build/
+Build/
+**/build/
+**/Build/
+
+# Compiled object files
+*.o
+*.obj
+*.ko
+*.elf
+*.axf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.bin
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# STM32 specific
+*.d
+*.lst
+
+# =====================================
+# Build Artifacts - RISC-V/FPGA
+# =====================================
+# Vivado generated directories
+vivado_project/
+vivado_sim_project/
+**/vivado_project/
+**/vivado_sim_project/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.runs/
+
+# Xilinx specific
+.Xil/
+**/.Xil/
+*.jou
+*.log
+*.str
+*.xpr.bak
+webtalk*.jou
+webtalk*.log
+usage_statistics_webtalk.html
+usage_statistics_webtalk.xml
+
+# Simulation waveforms (large files)
+*.wdb
+*.wcfg
+
+# Vivado timing reports (can be regenerated)
+*.rpt
+*.dcp
+*.bit
+*.ltx
+
+# RISC-V toolchain outputs
+*.mem
+*.dump
+*.dis
+
+# Keep important firmware hex files but ignore temporary ones
+# (Uncomment if you want to keep specific .hex/.bin files in version control)
+# !firmware/firmware.hex
+# !firmware/firmware.bin
+
+# =====================================
+# IDE and Editor Files
+# =====================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# Eclipse / STM32CubeIDE
+.metadata/
+.settings/
+.cproject
+.project
+.pydevproject
+RemoteSystemsTempFiles/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# =====================================
+# Operating System Files
+# =====================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =====================================
+# Temporary and Log Files
+# =====================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.log
+*.out
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# =====================================
+# Documentation Build Artifacts
+# =====================================
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.toc
+
+# =====================================
+# Version Control
+# =====================================
+# Git
+*.orig
+*.rej
+
+# =====================================
+# Keep Important Files
+# =====================================
+# Force include certain files that might be ignored by patterns above
+!.gitignore
+!.gitattributes
+
+# Keep specific hex files for firmware
+!**/firmware.hex
+!**/firmware.bin
+
+# Keep README and documentation
+!README*.md
+!**/README*.md
+!*.md
+
+# Keep source code
+!*.c
+!*.h
+!*.cpp
+!*.hpp
+!*.s
+!*.S
+!*.asm
+
+# Keep HDL files
+!*.v
+!*.sv
+!*.vhd
+!*.vhdl
+
+# Keep scripts
+!*.py
+!*.sh
+!*.tcl
+!*.bat
+
+# Keep configuration files
+!*.ld
+!*.cfg
+!*.json
+!*.yaml
+!*.yml
+!Makefile
+!*.mk
+
+# Keep constraints
+!*.xdc
+!*.ucf
+!*.sdc
+
+# Keep project files (but not generated ones)
+!*.ioc
+
+# =====================================
+# Project-Specific Exceptions
+# =====================================
+# Keep certain generated files that are important for the project
+!02-embedded/riscv-soc/firmware/firmware.mem
+!02-embedded/riscv-soc/firmware/comprehensive_test.mem
+
+# Keep important documentation in build directories
+!**/IMPLEMENTATION*.md
+!**/ARCHITECTURE*.md
+!**/VERIFICATION*.md
+!**/QUICKSTART*.md
+!**/SIMULATION*.md
