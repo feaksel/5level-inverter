@@ -7,7 +7,7 @@
  * - 32 KB ROM (firmware storage)
  * - 64 KB RAM (runtime data)
  * - PWM accelerator peripheral (8 channels with dead-time)
- * - ADC interface peripheral (4-channel SPI)
+ * - ADC interface peripheral (4-channel Sigma-Delta)
  * - Protection/fault peripheral (OCP, OVP, E-stop, watchdog)
  * - Timer peripheral
  * - GPIO peripheral (32 pins)
@@ -34,11 +34,9 @@ module soc_top #(
     // PWM Outputs (to H-bridge gate drivers)
     output wire [7:0]  pwm_out,
 
-    // ADC SPI Interface (external ADC chips)
-    output wire        adc_sck,
-    output wire        adc_mosi,
-    input  wire        adc_miso,
-    output wire        adc_cs_n,
+    // ADC Comparator Interface (LM339 comparators + RC filters)
+    input  wire [3:0]  comp_in,       // Comparator inputs from LM339
+    output wire [3:0]  dac_out,       // 1-bit DAC outputs to RC filters
 
     // Protection Inputs
     input  wire        fault_ocp,      // Overcurrent protection
@@ -232,7 +230,7 @@ module soc_top #(
     );
 
     //==========================================================================
-    // Peripherals: ADC Interface
+    // Peripherals: Sigma-Delta ADC
     //==========================================================================
 
     wire [7:0]  adc_addr;
@@ -244,8 +242,10 @@ module soc_top #(
     wire        adc_ack;
     wire        adc_irq;
 
-    adc_interface #(
-        .CLK_FREQ(CLK_FREQ)
+    sigma_delta_adc #(
+        .CLK_FREQ(CLK_FREQ),
+        .OSR(100),             // Oversampling ratio (1 MHz → 10 kHz)
+        .CIC_ORDER(3)          // 3rd-order CIC filter
     ) adc_periph (
         .clk(clk),
         .rst_n(rst_n_sync),
@@ -256,10 +256,8 @@ module soc_top #(
         .wb_sel(adc_sel),
         .wb_stb(adc_stb),
         .wb_ack(adc_ack),
-        .spi_sck(adc_sck),
-        .spi_mosi(adc_mosi),
-        .spi_miso(adc_miso),
-        .spi_cs_n(adc_cs_n),
+        .comp_in(comp_in),     // From LM339 comparators
+        .dac_out(dac_out),     // To RC filters
         .irq(adc_irq)
     );
 
