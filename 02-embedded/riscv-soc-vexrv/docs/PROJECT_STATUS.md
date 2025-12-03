@@ -1,14 +1,27 @@
 # Project Status Summary
 
-**Last Updated:** 2025-11-22
-**Version:** 3.0 - All Hardware Fixes Complete
-**Status:** ✅ **PRODUCTION READY - 5-LEVEL INVERTER**
+**Last Updated:** 2025-12-03
+**Version:** 4.0 - Sigma-Delta ADC Upgrade Complete
+**Status:** ✅ **PRODUCTION READY - 5-LEVEL INVERTER WITH INTEGRATED ADC**
 
 ---
 
 ## ✅ Verification Complete
 
-### Latest: Hardware Fixes for True 5-Level Operation
+### Latest: Sigma-Delta ADC Integration (2025-12-03)
+
+**New Feature:** Replaced SPI-based external ADC with integrated Sigma-Delta ADC
+
+✅ **4-channel Sigma-Delta ADC** implemented in FPGA fabric
+✅ **12-14 bit ENOB** at 10 kHz sampling rate per channel
+✅ **100× oversampling** with 3rd-order CIC decimation filters
+✅ **ASIC-ready** pure digital design
+✅ **Firmware drivers** complete with calibration support
+✅ **Hardware setup** only requires $0.60 LM339 comparator + RC filters
+
+See [DELTA-ADC-UPGRADE.md](DELTA-ADC-UPGRADE.md) for complete details.
+
+### Previous: Hardware Fixes for True 5-Level Operation
 ```
 [PASS] All 8 PWM channels switching!
 [PASS] 4 level-shifted carriers generated correctly!

@@ -65,20 +65,24 @@ set_property -dict { PACKAGE_PIN M18  IOSTANDARD LVCMOS33 } [get_ports fault_ovp
 set_property -dict { PACKAGE_PIN N17  IOSTANDARD LVCMOS33 } [get_ports estop_n]
 
 ##############################################################################
-# ADC SPI Interface - Pmod Header JXADC (or JC bottom row)
+# Sigma-Delta ADC Interface - Pmod Headers JC (bottom) and JD (top)
 ##############################################################################
 
-# ADC SPI Clock - JC7
-set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports adc_sck]
+# Comparator Inputs (from LM339) - JC bottom row (JC7-JC10)
+# These receive 1-bit digital signals from external comparator
 
-# ADC SPI MOSI - JC8
-set_property -dict { PACKAGE_PIN P18  IOSTANDARD LVCMOS33 } [get_ports adc_mosi]
+set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports {adc_comp_in[0]}]  # JC7  - CH0 (DC Bus 1)
+set_property -dict { PACKAGE_PIN P18  IOSTANDARD LVCMOS33 } [get_ports {adc_comp_in[1]}]  # JC8  - CH1 (DC Bus 2)
+set_property -dict { PACKAGE_PIN L17  IOSTANDARD LVCMOS33 } [get_ports {adc_comp_in[2]}]  # JC9  - CH2 (AC Voltage)
+set_property -dict { PACKAGE_PIN M19  IOSTANDARD LVCMOS33 } [get_ports {adc_comp_in[3]}]  # JC10 - CH3 (AC Current)
 
-# ADC SPI MISO - JC9
-set_property -dict { PACKAGE_PIN L17  IOSTANDARD LVCMOS33 } [get_ports adc_miso]
+# 1-bit DAC Outputs (to RC filters) - JD top row (JD1-JD4)
+# These drive the RC filters that create the analog feedback signal
 
-# ADC Chip Select (Active-low) - JC10
-set_property -dict { PACKAGE_PIN M19  IOSTANDARD LVCMOS33 } [get_ports adc_cs_n]
+set_property -dict { PACKAGE_PIN H17  IOSTANDARD LVCMOS33 } [get_ports {adc_dac_out[0]}]  # JD1 - CH0 feedback
+set_property -dict { PACKAGE_PIN H19  IOSTANDARD LVCMOS33 } [get_ports {adc_dac_out[1]}]  # JD2 - CH1 feedback
+set_property -dict { PACKAGE_PIN J19  IOSTANDARD LVCMOS33 } [get_ports {adc_dac_out[2]}]  # JD3 - CH2 feedback
+set_property -dict { PACKAGE_PIN K19  IOSTANDARD LVCMOS33 } [get_ports {adc_dac_out[3]}]  # JD4 - CH3 feedback
 
 ##############################################################################
 # Debug/Status LEDs (Onboard)
@@ -100,15 +104,15 @@ set_property -dict { PACKAGE_PIN V19  IOSTANDARD LVCMOS33 } [get_ports {led[3]}]
 # GPIO Pins (for expansion/debug) - Using remaining Pmod JD and switches
 ##############################################################################
 
-# GPIO[0:7] - Pmod Header JD
-set_property -dict { PACKAGE_PIN H17  IOSTANDARD LVCMOS33 } [get_ports {gpio[0]}]   # JD1
-set_property -dict { PACKAGE_PIN H19  IOSTANDARD LVCMOS33 } [get_ports {gpio[1]}]   # JD2
-set_property -dict { PACKAGE_PIN J19  IOSTANDARD LVCMOS33 } [get_ports {gpio[2]}]   # JD3
-set_property -dict { PACKAGE_PIN K19  IOSTANDARD LVCMOS33 } [get_ports {gpio[3]}]   # JD4
-set_property -dict { PACKAGE_PIN H18  IOSTANDARD LVCMOS33 } [get_ports {gpio[4]}]   # JD7
-set_property -dict { PACKAGE_PIN J18  IOSTANDARD LVCMOS33 } [get_ports {gpio[5]}]   # JD8
-set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports {gpio[6]}]   # JD9
-set_property -dict { PACKAGE_PIN L18  IOSTANDARD LVCMOS33 } [get_ports {gpio[7]}]   # JD10
+# GPIO[0:3] - Pmod Header JD (bottom row) - JD1-JD4 now used for ADC DAC outputs
+# GPIO[0:3] remapped to JD7-JD10
+set_property -dict { PACKAGE_PIN H18  IOSTANDARD LVCMOS33 } [get_ports {gpio[0]}]   # JD7
+set_property -dict { PACKAGE_PIN J18  IOSTANDARD LVCMOS33 } [get_ports {gpio[1]}]   # JD8
+set_property -dict { PACKAGE_PIN K18  IOSTANDARD LVCMOS33 } [get_ports {gpio[2]}]   # JD9  (Note: shared with comp_in[0])
+set_property -dict { PACKAGE_PIN L18  IOSTANDARD LVCMOS33 } [get_ports {gpio[3]}]   # JD10
+
+# GPIO[4:7] - Reserved/Not connected (JD1-4 used for ADC)
+# If needed, can use other available pins
 
 # GPIO[8:15] - Switches (SW0-SW7)
 set_property -dict { PACKAGE_PIN V17  IOSTANDARD LVCMOS33 } [get_ports {gpio[8]}]   # SW0
@@ -132,8 +136,8 @@ create_generated_clock -name clk_50mhz -source [get_ports clk_100mhz] -divide_by
 # All inputs are sampled by the 50 MHz clock domain
 set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports uart_rx]
 set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports uart_rx]
-set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports adc_miso]
-set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports adc_miso]
+set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports {adc_comp_in[*]}]
+set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports {adc_comp_in[*]}]
 set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports fault_ocp]
 set_input_delay -clock [get_clocks clk_50mhz] -max 5.0 [get_ports fault_ocp]
 set_input_delay -clock [get_clocks clk_50mhz] -min 0.0 [get_ports fault_ovp]
@@ -149,12 +153,8 @@ set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports {pwm_out[*]}
 set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports {pwm_out[*]}]
 set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports {led[*]}]
 set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports {led[*]}]
-set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_sck]
-set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_sck]
-set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_mosi]
-set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_mosi]
-set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports adc_cs_n]
-set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports adc_cs_n]
+set_output_delay -clock [get_clocks clk_50mhz] -min -1.0 [get_ports {adc_dac_out[*]}]
+set_output_delay -clock [get_clocks clk_50mhz] -max 3.0 [get_ports {adc_dac_out[*]}]
 
 ##############################################################################
 # Configuration and Bitstream Settings

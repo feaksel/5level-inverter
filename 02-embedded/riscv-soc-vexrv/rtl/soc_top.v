@@ -34,11 +34,11 @@ module soc_top #(
     // PWM Outputs (to H-bridge gate drivers)
     output wire [7:0]  pwm_out,
 
-    // ADC SPI Interface (external ADC chips)
-    output wire        adc_sck,
-    output wire        adc_mosi,
-    input  wire        adc_miso,
-    output wire        adc_cs_n,
+    // Sigma-Delta ADC Interface (4 channels)
+    // Comparator inputs from LM339 (external quad comparator)
+    input  wire [3:0]  adc_comp_in,    // Comparator inputs (1-bit per channel)
+    // DAC outputs to RC filters (1-bit per channel)
+    output wire [3:0]  adc_dac_out,
 
     // Protection Inputs
     input  wire        fault_ocp,      // Overcurrent protection
@@ -232,7 +232,7 @@ module soc_top #(
     );
 
     //==========================================================================
-    // Peripherals: ADC Interface
+    // Peripherals: Sigma-Delta ADC (4-Channel)
     //==========================================================================
 
     wire [7:0]  adc_addr;
@@ -244,8 +244,10 @@ module soc_top #(
     wire        adc_ack;
     wire        adc_irq;
 
-    adc_interface #(
-        .CLK_FREQ(CLK_FREQ)
+    sigma_delta_adc #(
+        .CLK_FREQ(CLK_FREQ),
+        .OSR(100),              // 100× oversampling (1 MHz → 10 kHz)
+        .CIC_ORDER(3)           // 3rd-order CIC filter
     ) adc_periph (
         .clk(clk),
         .rst_n(rst_n_sync),
@@ -256,10 +258,8 @@ module soc_top #(
         .wb_sel(adc_sel),
         .wb_stb(adc_stb),
         .wb_ack(adc_ack),
-        .spi_sck(adc_sck),
-        .spi_mosi(adc_mosi),
-        .spi_miso(adc_miso),
-        .spi_cs_n(adc_cs_n),
+        .comp_in(adc_comp_in),     // External comparator inputs
+        .dac_out(adc_dac_out),     // 1-bit DAC outputs
         .irq(adc_irq)
     );
 
