@@ -105,8 +105,8 @@
 | **Capacitors - Ceramic** | By value and voltage | |
 | **Capacitors - Electrolytic** | By value (watch polarity!) | |
 | **Diodes** | By type (UF4007, TVS) | |
-| **ICs** | IR2110, AMC1301, ACS724, etc. | Anti-static bag |
-| **IGBTs** | Q1-Q8 | Anti-static bag |
+| **ICs** | TLP250, LM339, etc. | Anti-static bag |
+| **MOSFETs** | Q1-Q8 | Anti-static bag |
 | **Connectors** | Terminals, headers | |
 | **Hardware** | Screws, standoffs, heatsinks | |
 
@@ -155,7 +155,7 @@
 
 ### 1.3 Integrated Circuits (SOIC packages)
 
-**Components:** AMC1301 (SOIC-8), ACS724 (SOIC-8)
+**Components:** LM339 (SOIC-14) quad comparator
 
 **Procedure:**
 1. Apply solder paste or flux to pads
@@ -236,9 +236,9 @@
 - Measure across capacitor (unpowered)
 - Forward bias should show ~0.5-0.7V (one direction only)
 
-### 2.4 DIP ICs (IR2110 Gate Drivers)
+### 2.4 DIP ICs (TLP250 Gate Drivers)
 
-**Components:** U1-U4 (IR2110PBF, DIP-14)
+**Components:** U1-U4 (TLP250PBF, DIP-14)
 
 **Option A: IC Sockets (Recommended)**
 1. Insert IC socket (notch matches silkscreen)
@@ -258,30 +258,30 @@
 
 ---
 
-## Step 3: Power Stage Assembly (IGBTs)
+## Step 3: Power Stage Assembly (MOSFETs)
 
-### 3.1 IGBT Preparation
+### 3.1 MOSFET Preparation
 
 **Components:** Q1-Q8 (IKW15N120H3, TO-247 package)
 
 **Pre-installation checks:**
 - [ ] Identify pins: Gate (G), Collector (C), Emitter (E)
 - [ ] Verify datasheet pinout matches PCB
-- [ ] Check IGBT not damaged (measure VGE with multimeter)
+- [ ] Check MOSFET not damaged (measure VGE with multimeter)
 
 **Pin identification (TO-247 package):**
 ```
 Front view (looking at pins):
 ┌─────────┐
 │    Q1   │
-│  IGBT   │
+│  MOSFET   │
 │         │
 └─┬───┬───┘
   G   C   E
   1   2   3
 ```
 
-### 3.2 IGBT Installation (NO Heatsink Yet)
+### 3.2 MOSFET Installation (NO Heatsink Yet)
 
 **Procedure:**
 
@@ -289,15 +289,15 @@ Front view (looking at pins):
    - Clean pads with IPA
    - Apply flux
 
-2. **Bend IGBT leads slightly (if needed):**
+2. **Bend MOSFET leads slightly (if needed):**
    - Match PCB hole spacing (usually 5.08mm / 0.2")
    - Don't bend excessively (stress on package)
 
-3. **Insert IGBT into PCB:**
+3. **Insert MOSFET into PCB:**
    - Push through until plastic body ~2mm above PCB
    - Verify pin alignment (Gate to gate pad, etc.)
 
-4. **Temporarily support IGBT:**
+4. **Temporarily support MOSFET:**
    - Use tape or clamp to hold vertical
    - Or tack solder one pin
 
@@ -311,28 +311,28 @@ Front view (looking at pins):
 
 ### 3.3 Gate Resistors and Pull-Downs
 
-**Install immediately after IGBTs:**
+**Install immediately after MOSFETs:**
 
 **Gate Resistors (10Ω, 2W):**
-- One lead to IR2110 output (HO or LO)
-- Other lead to IGBT gate pin
+- One lead to TLP250 output (HO or LO)
+- Other lead to MOSFET gate pin
 - **Keep leads SHORT** (< 10mm total length)
 - Solder and trim
 
 **Gate-Emitter Resistors (10kΩ, 1/4W):**
-- Between IGBT gate and emitter
+- Between MOSFET gate and emitter
 - Pull gate low when driver off
 - Solder and trim
 
 ### 3.4 Snubber Circuits
 
-**Components per IGBT:** 47Ω (2W) + 100nF (100V ceramic)
+**Components per MOSFET:** 47Ω (2W) + 100nF (100V ceramic)
 
 **Procedure:**
 1. Solder resistor and capacitor in series
-2. Connect across collector-emitter of IGBT
+2. Connect across collector-emitter of MOSFET
 3. **Keep leads very short** (< 20mm loop area)
-4. Solder directly to IGBT pins if possible
+4. Solder directly to MOSFET pins if possible
 
 ---
 
@@ -350,45 +350,45 @@ Front view (looking at pins):
 **Option A: Thermal Paste (Most Common)**
 
 **Procedure:**
-1. Clean IGBT metal tab with IPA
-2. Apply small amount (rice grain size) to IGBT tab
+1. Clean MOSFET metal tab with IPA
+2. Apply small amount (rice grain size) to MOSFET tab
 3. Spread evenly with plastic card (thin layer, 0.1mm)
 4. Do NOT over-apply (excess makes worse thermal contact)
 
 **Option B: Thermal Pad (Electrically Isolating)**
 
-**Use when:** IGBT collector (tab) must be isolated from heatsink
+**Use when:** MOSFET collector (tab) must be isolated from heatsink
 
 **Procedure:**
-1. Cut thermal pad to size (slightly larger than IGBT tab)
+1. Cut thermal pad to size (slightly larger than MOSFET tab)
 2. Remove protective film from both sides
 3. Place pad on heatsink first
-4. Press IGBT onto pad
+4. Press MOSFET onto pad
 
 ### 4.3 Heatsink Mounting
 
 **Hardware:**
 - M3 or M4 screws (depends on heatsink)
-- Washers (prevent screw head damage to IGBT)
+- Washers (prevent screw head damage to MOSFET)
 - Spring washers or lock washers (prevent loosening)
 
 **Procedure:**
 
-1. **Align heatsink with IGBTs:**
-   - Ensure all IGBTs contact heatsink surface
-   - If using single heatsink for multiple IGBTs, check alignment
+1. **Align heatsink with MOSFETs:**
+   - Ensure all MOSFETs contact heatsink surface
+   - If using single heatsink for multiple MOSFETs, check alignment
 
 2. **Insert screws (hand-tight first):**
    - Do NOT fully tighten yet
    - Allow slight movement for alignment
 
-3. **Check IGBT alignment:**
-   - All IGBTs should be parallel to PCB
+3. **Check MOSFET alignment:**
+   - All MOSFETs should be parallel to PCB
    - No twisting or bending
 
 4. **Tighten screws in cross pattern:**
    ```
-   Tightening order for 4 IGBTs:
+   Tightening order for 4 MOSFETs:
 
    Q1 ─── 1 ────── 3 ─── Q3
         │         │
@@ -401,21 +401,21 @@ Front view (looking at pins):
 5. **Torque specification:**
    - **0.5-0.8 Nm (5-7 kgf·cm)** for M3 screws
    - Hand-tight with small screwdriver (don't over-torque!)
-   - Over-torquing cracks IGBT package
+   - Over-torquing cracks MOSFET package
 
 6. **Verify thermal contact:**
-   - Slight resistance when trying to wiggle IGBT
-   - No gaps visible between IGBT and heatsink
+   - Slight resistance when trying to wiggle MOSFET
+   - No gaps visible between MOSFET and heatsink
 
 ### 4.4 Thermal Verification
 
 **After installation:**
 - Run circuit at low power (12V, 25% duty cycle)
-- Monitor IGBT temperature with IR thermometer
-- Should heat up evenly (all IGBTs similar temperature)
+- Monitor MOSFET temperature with IR thermometer
+- Should heat up evenly (all MOSFETs similar temperature)
 - Temperature rise should be slow and controlled
 
-**If one IGBT much hotter than others:**
+**If one MOSFET much hotter than others:**
 - Poor thermal contact (re-apply thermal paste)
 - Electrical issue (check circuit)
 
@@ -466,10 +466,10 @@ Front view (looking at pins):
 - [ ] ICs: Pin 1 matches silkscreen
 - [ ] Diodes: Cathode matches silkscreen
 - [ ] Electrolytic caps: Negative to GND
-- [ ] IGBTs: Correct pin assignment (G, C, E)
+- [ ] MOSFETs: Correct pin assignment (G, C, E)
 
 **Mechanical:**
-- [ ] IGBTs mounted securely to heatsink
+- [ ] MOSFETs mounted securely to heatsink
 - [ ] No loose components
 - [ ] Connectors firmly seated
 - [ ] No solder splashes or debris
@@ -510,7 +510,7 @@ Check all diodes (UF4007, TVS) in circuit.
 
 **Gate-Emitter Resistance:**
 
-For each IGBT (power OFF):
+For each MOSFET (power OFF):
 - Gate to Emitter: Should read ~10kΩ (pull-down resistor)
 - If 0Ω: Short circuit (check for solder bridges)
 - If OL: Open circuit (check pull-down resistor soldered)
@@ -536,7 +536,7 @@ For each IGBT (power OFF):
    - **If current > 100mA:** Power off immediately, find short
 
 2. **Measure voltages:**
-   - VCC at each IR2110: Should be 14.5-15.5V
+   - VCC at each TLP250: Should be 14.5-15.5V
    - If any IC has wrong voltage: Check solder joints, traces
 
 3. **Apply +12V to DC bus (NO PWM yet):**
@@ -545,7 +545,7 @@ For each IGBT (power OFF):
    - **Monitor current:** Should be < 10mA (just charging capacitors)
    - **Measure DC bus voltage:** Should be 11.5-12.5V
 
-4. **Check IGBT gate voltages (PWM OFF):**
+4. **Check MOSFET gate voltages (PWM OFF):**
    - All gates should be at 0V (pulled low by 10kΩ resistors)
 
 ### 7.2 Gate Driver Functional Test
@@ -562,7 +562,7 @@ For each IGBT (power OFF):
    - **Start with ONE driver only (test incrementally)**
 
 2. **Measure gate drive outputs with oscilloscope:**
-   - CH1: IGBT gate voltage (Gate to Emitter)
+   - CH1: MOSFET gate voltage (Gate to Emitter)
    - CH2: PWM input signal (reference)
    - **Expected:** Gate voltage swings 0-15V, following PWM input
 
