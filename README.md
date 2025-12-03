@@ -10,10 +10,11 @@
 Complete control system implementation for a 5-level cascaded H-bridge multilevel inverter, with **production-ready implementations** across STM32, FPGA, and a fully functional RISC-V System-on-Chip (SoC).
 
 ### Key Features
-- 🔌 **Power**: 500W, 100V RMS output, 2×50V DC input (2 H-bridges)
+- 🔌 **Power**: 707W (~700W), 70.7V RMS (100V peak AC) output, 2×50V DC input (2 H-bridges)
 - ⚡ **Topology**: 5 voltage levels (+100V, +50V, 0, -50V, -100V)
-- 🎛️ **Modulation**: Level-shifted carrier PWM (carrier 1: -1 to 0, carrier 2: 0 to +1)
-- 📊 **Performance**: THD < 5%, 10kHz switching, 1μs dead-time
+- 🎛️ **Modulation**: Level-shifted carrier PWM, 5kHz switching
+- 📊 **Performance**: THD < 5% (4.9% achieved in simulation), 1μs dead-time
+- 🔧 **Components**: IRFZ44N MOSFETs (55V, 49A) + TLP250 isolated drivers, Sigma-Delta ADC sensing
 - 🔧 **Multi-Platform**:
   - ✅ STM32F401RE (1,734 lines C code, production-ready)
   - ✅ FPGA Verilog modules (827 lines RTL)
@@ -79,7 +80,7 @@ make flash
    - Ch1: PA8 (TIM1_CH1)
    - Ch2: PB13 (TIM1_CH1N)
 3. Verify:
-   - Frequency: 10kHz
+   - Frequency: 5kHz
    - Dead-time: ~1μs
    - Complementary outputs
 4. Check phase shift between PA8 and PC6 (should be 180°)
@@ -166,9 +167,9 @@ See `02-embedded/stm32/README.md` for detailed testing procedures.
 
 ### Minimum Setup
 - **STM32F401RE** Nucleo board (current implementation)
-- **2× H-bridge modules** with gate drivers (IR2110 or similar)
-- **2× 50V DC isolated power supplies**
-- **8× Power MOSFETs** (IRFZ44N or equivalent)
+- **2× H-bridge modules** with TLP250 optically isolated gate drivers
+- **2× 50V DC isolated power supplies** (10A+ continuous capability)
+- **8× IRFZ44N MOSFETs** (55V, 49A, 17.5mΩ Rds(on))
 - **Oscilloscope** (2+ channels, ≥50MHz)
 - **USB-Serial adapter** for debug (optional but recommended)
 
@@ -238,12 +239,13 @@ python uart_plotter.py           # Plot UART data
 
 ## Safety Warning
 
-⚠️ **HIGH VOLTAGE** - This project involves potentially dangerous voltages. Always:
+⚠️ **HIGH VOLTAGE & HIGH CURRENT** - This project involves potentially lethal voltages (up to 100V peak AC) and high currents (10A RMS, ±14A peak). Always:
 - Use proper isolation
-- Implement hardware protection
-- Test with reduced voltage first
+- Implement hardware protection (overcurrent, overvoltage)
+- Test with reduced voltage first (start at 5-12V)
 - Never work on live circuits
-- Use appropriate safety equipment
+- Use appropriate safety equipment (insulated tools, safety glasses)
+- Work with a buddy for emergency assistance
 
 ## License
 
