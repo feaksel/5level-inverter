@@ -100,7 +100,7 @@ This project involves potentially **LETHAL VOLTAGES AND CURRENTS** (up to 100V p
 ## Stage 1: Gate Driver Testing (Low Voltage)
 
 ### Objective
-Verify IR2110 gate driver operation with **NO high voltage** and **NO IGBTs**.
+Verify TLP250 gate driver operation with **NO high voltage** and **NO MOSFETs**.
 
 ### Circuit Diagram
 
@@ -112,7 +112,7 @@ Verify IR2110 gate driver operation with **NO high voltage** and **NO IGBTs**.
      └────┬────┘
           │
      ┌────┴──────────┐
-     │    IR2110     │
+     │    TLP250     │
      │               │
 PWM_H ───►HIN    HO──┼──► Scope CH1 (High-side output)
      │               │
@@ -132,7 +132,7 @@ PWM_L ───►LIN    LO──┼──► Scope CH2 (Low-side output)
 
 **On Breadboard 1:**
 
-1. Insert IR2110 IC (DIP package) - note pin 1 orientation
+1. Insert TLP250 IC (DIP package) - note pin 1 orientation
 2. Connect pin 1 (VCC) to +15V rail
 3. Connect pin 9 (COM) to GND rail
 4. Add 100µF electrolytic between VCC (pin 1) and GND (pin 9)
@@ -169,8 +169,8 @@ PWM_L ───►LIN    LO──┼──► Scope CH2 (Low-side output)
 
 #### 1.4 Connect Oscilloscope
 
-11. Scope CH1 → IR2110 pin 7 (HO) - High-side output
-12. Scope CH2 → IR2110 pin 1 (LO) - Low-side output
+11. Scope CH1 → TLP250 pin 7 (HO) - High-side output
+12. Scope CH2 → TLP250 pin 1 (LO) - Low-side output
 13. Scope GND → Breadboard GND
 
 **Scope Settings:**
@@ -243,10 +243,10 @@ Dead-time: ______┘     └_____┌     └______
 ## Stage 2: Single Switch Testing
 
 ### Objective
-Test ONE IGBT with gate driver at **LOW voltage (12V DC bus)**.
+Test ONE MOSFET with gate driver at **LOW voltage (12V DC bus)**.
 
 ### Safety Note
-Even 12V can cause **large currents** through IGBTs. Use current-limited supply (max 2A).
+Even 12V can cause **large currents** through MOSFETs. Use current-limited supply (max 2A).
 
 ### Circuit Diagram
 
@@ -257,8 +257,8 @@ Even 12V can cause **large currents** through IGBTs. Use current-limited supply 
           │
       ┌───▼───┐  Collector
       │       │
-      │  Q1   │  IGBT (IKW15N120H3)
-      │ IGBT  │
+      │  Q1   │  MOSFET (IRFZ44N)
+      │ MOSFET  │
       │       │
       └───┬───┘  Emitter
           │
@@ -267,7 +267,7 @@ Even 12V can cause **large currents** through IGBTs. Use current-limited supply 
          GND
 
 Gate Drive:
-      IR2110 HO ───┬─── 10Ω gate resistor ──► Q1 Gate
+      TLP250 HO ───┬─── 10Ω gate resistor ──► Q1 Gate
                    │
                   10k
                    │
@@ -276,15 +276,15 @@ Gate Drive:
 
 ### Step-by-Step Procedure
 
-#### 2.1 Build IGBT Circuit on Breadboard 2
+#### 2.1 Build MOSFET Circuit on Breadboard 2
 
 **IMPORTANT:** Keep gate driver circuit (Breadboard 1) separate from power circuit (Breadboard 2) initially.
 
-1. Insert IGBT Q1 into breadboard
+1. Insert MOSFET Q1 into breadboard
    - **Identify pins:** Use datasheet (Collector, Gate, Emitter)
    - Heatsink not needed for 12V/2A testing
 
-2. Add 10Ω gate resistor between IR2110 HO and IGBT gate
+2. Add 10Ω gate resistor between TLP250 HO and MOSFET gate
    - **Keep lead short** (< 5cm) to reduce inductance
 
 3. Add 10kΩ gate-emitter resistor
@@ -301,21 +301,21 @@ Gate Drive:
 6. Connect +12V supply (current limit: 2A) to breadboard +rail
 7. Add 1000µF, 25V electrolytic capacitor from +12V to GND
    - **Check polarity!**
-8. Add 4× 1µF ceramic capacitors (parallel) near IGBT collector
+8. Add 4× 1µF ceramic capacitors (parallel) near MOSFET collector
 
-#### 2.3 Connect Gate Driver to IGBT
+#### 2.3 Connect Gate Driver to MOSFET
 
-9. Connect IR2110 HO (Breadboard 1) to gate resistor (Breadboard 2)
+9. Connect TLP250 HO (Breadboard 1) to gate resistor (Breadboard 2)
    - Use short, direct wire
-10. Connect IR2110 COM to IGBT emitter (common ground)
+10. Connect TLP250 COM to MOSFET emitter (common ground)
 
 #### 2.4 Add Instrumentation
 
-11. **Oscilloscope CH1:** IGBT collector (measure VCE)
+11. **Oscilloscope CH1:** MOSFET collector (measure VCE)
     - Use 100:1 probe or differential probe
 12. **Oscilloscope CH2:** Gate signal (after 10Ω resistor)
 13. **Oscilloscope CH3:** Emitter shunt resistor (measure current)
-    - V_shunt = I_IGBT × 10Ω
+    - V_shunt = I_MOSFET × 10Ω
 
 #### 2.5 Power-On Test (LOW POWER)
 
@@ -357,15 +357,15 @@ Emitter current (CH3):
 
 **Verify:**
 - Gate voltage swings 0-15V cleanly
-- Collector voltage drops when gate high (IGBT conducting)
+- Collector voltage drops when gate high (MOSFET conducting)
 - VCE(sat) approximately 2V (varies with current)
-- Current flows through shunt when IGBT on
+- Current flows through shunt when MOSFET on
 
 #### 2.7 Increase Duty Cycle Gradually
 
 19. Increase duty cycle in steps: 5% → 10% → 25% → 50%
 20. **At each step:**
-    - Monitor IGBT case temperature (should be < 60°C)
+    - Monitor MOSFET case temperature (should be < 60°C)
     - Measure VCE(sat) (should be < 3V @ 2A)
     - Verify clean switching (no oscillation)
 
@@ -377,7 +377,7 @@ Emitter current (CH3):
 | Gate low voltage | < 0.5V | _____ V | ☐ |
 | VCE(sat) @ 2A | < 3V | _____ V | ☐ |
 | Collector current | < 2A | _____ A | ☐ |
-| IGBT temperature | < 60°C | _____ °C | ☐ |
+| MOSFET temperature | < 60°C | _____ °C | ☐ |
 | Turn-on time | < 200ns | _____ ns | ☐ |
 | Turn-off time | < 500ns | _____ ns | ☐ |
 
@@ -398,19 +398,19 @@ Test high-side + low-side switches with bootstrap supply at **12V DC bus**.
                 ├──── 1000µF + 4×1µF caps
                 │
            ┌────┴────┐  Q1 High-side
-           │  IGBT   │
+           │  MOSFET   │
            │   Q1    │
            └────┬────┘
                 │ Midpoint (OUTPUT)
            ┌────┴────┐  Q2 Low-side
-           │  IGBT   │
+           │  MOSFET   │
            │   Q2    │
            └────┬────┘
                 │
                GND
 
 Gate Driver:
-    IR2110 with PROPER bootstrap circuit
+    TLP250 with PROPER bootstrap circuit
     (VB - VS floating supply)
 ```
 
@@ -428,7 +428,7 @@ Gate Driver:
 3. **Add** bootstrap capacitor:
    - 10µF ceramic, 25V between VB (pin 5) and VS (pin 7)
    - **Polarity matters** if using electrolytic (+ to VB)
-4. **Connect VS (pin 7) to Q1 emitter** (high-side IGBT emitter)
+4. **Connect VS (pin 7) to Q1 emitter** (high-side MOSFET emitter)
    - This is now the "floating" reference
 
 **How Bootstrap Works:**
@@ -444,21 +444,21 @@ When Q1 (high-side) is ON:
     This provides 15V gate drive for Q1
 ```
 
-#### 3.2 Add Both IGBTs
+#### 3.2 Add Both MOSFETs
 
 5. Insert Q1 (high-side) into breadboard:
    - Collector to +12V rail
    - Emitter to midpoint
-   - Gate through 10Ω resistor to IR2110 HO
+   - Gate through 10Ω resistor to TLP250 HO
 
 6. Insert Q2 (low-side) into breadboard:
    - Collector to midpoint (same as Q1 emitter)
    - Emitter to GND
-   - Gate through 10Ω resistor to IR2110 LO
+   - Gate through 10Ω resistor to TLP250 LO
 
-7. Add gate-emitter resistors (10kΩ) for both IGBTs
+7. Add gate-emitter resistors (10kΩ) for both MOSFETs
 
-8. Add snubbers (47Ω + 100nF) across BOTH IGBTs
+8. Add snubbers (47Ω + 100nF) across BOTH MOSFETs
 
 #### 3.3 Dead-Time Configuration
 
@@ -492,7 +492,7 @@ No overlap → Safe!
 
 9. **Apply +15V to gate driver VCC**
 10. **Apply +12V to DC bus**
-11. **Start PWM with 25% duty cycle, 10 kHz**
+11. **Start PWM with 25% duty cycle, 5 kHz**
 12. **Observe midpoint voltage:**
     - Should switch between 0V (Q2 on) and +12V (Q1 on)
     - Measure with scope
@@ -513,7 +513,7 @@ No overlap → Safe!
 15. **Add resistive load** (25Ω, 50W) from midpoint to GND
 16. **Observe:**
     - Midpoint voltage under load (may droop slightly)
-    - IGBT temperatures (should be < 60°C)
+    - MOSFET temperatures (should be < 60°C)
     - Collector currents (I = V/R = 12V/25Ω = 0.48A)
 
 ### 3.7 Measurements
@@ -541,7 +541,7 @@ Build and test complete single H-bridge with 4 switches at **12V DC bus**.
 
 ### Circuit Expansion
 
-Add second leg (Q3, Q4) with second IR2110 driver, following same procedure as Stage 3.
+Add second leg (Q3, Q4) with second TLP250 driver, following same procedure as Stage 3.
 
 **H-Bridge Configuration:**
 
@@ -641,7 +641,7 @@ V_out:
 
 ## Stage 6: Sensing Circuit Testing
 
-### Current Sensor Testing (ACS724)
+### Current Sensor Testing (Sigma-Delta ADC)
 
 1. **Build circuit** as per schematic
 2. **Apply 5V** to VCC
@@ -652,9 +652,9 @@ V_out:
 5. **Verify linearity** across range
 6. **Check bandwidth:** Apply 1 kHz square wave current, verify tracking
 
-### Voltage Sensor Testing (AMC1301)
+### Voltage Sensor Testing (Sigma-Delta ADC with LM339)
 
-1. **Build voltage divider + AMC1301**
+1. **Build Sigma-Delta ADC circuit with LM339 comparator**
 2. **Apply 5V to both VDD1 and VDD2**
 3. **Apply known input voltage** (use precision power supply):
    - 10V input → Vout = 10V × (1k/197k) × 8.2 = 0.416V
@@ -666,7 +666,7 @@ V_out:
 
 ## Troubleshooting Guide
 
-### Problem: IR2110 gets hot immediately
+### Problem: TLP250 gets hot immediately
 
 **Causes:**
 - VCC or VB shorted to GND
@@ -679,18 +679,18 @@ V_out:
 - Verify capacitor polarity
 - Replace IC if damaged
 
-### Problem: IGBT won't turn on (VCE stays high)
+### Problem: MOSFET won't turn on (VCE stays high)
 
 **Causes:**
 - Gate resistor too high or missing
 - Gate-emitter shorted (0Ω)
-- Dead IGBT
+- Dead MOSFET
 - Insufficient gate voltage (VGE < 10V)
 
 **Solution:**
 - Measure VGE with scope (should be 14-15V when on)
 - Check gate resistor value (should be 10Ω, not 10kΩ!)
-- Test IGBT with multimeter diode mode
+- Test MOSFET with multimeter diode mode
 
 ### Problem: Bootstrap voltage (VB-VS) droops
 
@@ -698,18 +698,18 @@ V_out:
 - C_bootstrap too small
 - Bootstrap diode wrong direction or too slow
 - Duty cycle too high (> 90%)
-- Leakage in IR2110
+- Leakage in TLP250
 
 **Solution:**
 - Increase C_bootstrap to 22µF
 - Use faster diode (UF4007 or better)
 - Ensure low-side turns on regularly to recharge bootstrap
 
-### Problem: Shoot-through (both IGBTs on simultaneously)
+### Problem: Shoot-through (both MOSFETs on simultaneously)
 
 **Symptoms:**
 - Large current spike
-- IGBTs get very hot
+- MOSFETs get very hot
 - Blown fuse
 
 **Causes:**

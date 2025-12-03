@@ -104,7 +104,7 @@ Total thickness: 1.6mm
 - Use thermal relief for vias
 
 **Layer 4 (Bottom - 2oz):**
-- Sensing circuits (AMC1301, ACS724)
+- Sensing circuits (LM339 comparators for Sigma-Delta ADC)
 - Control connectors
 - Auxiliary power circuits
 - Additional routing if needed
@@ -128,8 +128,8 @@ Total thickness: 1.6mm
          │                             │
     ┌────▼────┐                   ┌────▼────┐
     │   Q1    │                   │   Q3    │
-    │  IGBT   │                   │  IGBT   │
-    │ (TO-247)│                   │ (TO-247)│
+    │ MOSFET  │                   │ MOSFET  │
+    │(IRFZ44N)│                   │(IRFZ44N)│
     └────┬────┘                   └────┬────┘
          │                             │
          │   ┌─────────────────┐      │
@@ -138,19 +138,21 @@ Total thickness: 1.6mm
          │                             │
     ┌────┴────┐                   ┌────┴────┐
     │   Q2    │                   │   Q4    │
-    │  IGBT   │                   │  IGBT   │
-    │ (TO-247)│                   │  (TO-247)│
+    │ MOSFET  │                   │ MOSFET  │
+    │(IRFZ44N)│                   │(IRFZ44N)│
     └────┬────┘                   └────┬────┘
          │                             │
          └──────────────┬──────────────┘
                        GND
 
-Gate Drivers (DIP-14):
-    U1: IR2110 ──► Q1, Q2 (close to IGBTs)
-    U2: IR2110 ──► Q3, Q4 (close to IGBTs)
+Gate Drivers (DIP-8):
+    U1: TLP250 ──► Q1 (optically isolated)
+    U2: TLP250 ──► Q2 (optically isolated)
+    U3: TLP250 ──► Q3 (optically isolated)
+    U4: TLP250 ──► Q4 (optically isolated)
 
-Bootstrap components:
-    D_bs, C_bs (10µF) - within 10mm of IR2110
+Isolated Power (per TLP250):
+    +15V isolated DC-DC converters - one per driver
 ```
 
 ### Placement Rules
@@ -158,36 +160,36 @@ Bootstrap components:
 #### 1. Power Stage (Q1-Q4 and capacitors)
 
 **Requirements:**
-- Keep DC bus capacitors **< 10mm from IGBT collectors**
-- Bypass ceramics (1µF × 4) **< 5mm from IGBT collectors**
-- Minimize trace length from cap to IGBT
-- IGBTs in a cluster (easy heatsinking)
+- Keep DC bus capacitors **< 10mm from MOSFET drains**
+- Bypass ceramics (1µF × 4) **< 5mm from MOSFET drains**
+- Minimize trace length from cap to MOSFET
+- MOSFETs in a cluster (easy heatsinking)
 
 **Orientation:**
-- IGBTs facing same direction (collectors together)
+- MOSFETs facing same direction (drains together)
 - Allow heatsink mounting (keep area clear)
-- Leave 5mm clearance around IGBTs for airflow
+- Leave 5mm clearance around MOSFETs for airflow
 
-#### 2. Gate Drivers (U1-U4)
+#### 2. Gate Drivers (U1-U8, TLP250)
 
 **Requirements:**
-- Place IR2110 **< 20mm from IGBT gates**
-- Gate resistors (10Ω) **immediately** at IGBT gate pin
-- Bootstrap diode and cap **< 10mm from VB/VS pins**
-- VCC bypass caps **< 5mm from VCC pin**
+- Place TLP250 **< 20mm from MOSFET gates**
+- Gate resistors (10Ω) **immediately** at MOSFET gate pin
+- Isolated 15V power supply **< 10mm from TLP250 VCC/GND pins**
+- VCC bypass caps (0.1µF) **< 5mm from VCC pin**
 
 **Trace Lengths (keep short!):**
-- HO/LO to gate resistor: < 10mm
-- Gate resistor to IGBT gate: < 10mm
-- VS to IGBT emitter: < 10mm (high-side emitter)
+- TLP250 output to gate resistor: < 10mm
+- Gate resistor to MOSFET gate: < 10mm
+- GND to MOSFET source: < 10mm (direct connection)
 
 #### 3. Sensing Circuits
 
 **Requirements:**
 - Place on **opposite side** of board from power switches
-- Keep away from high dv/dt nodes (IGBT collectors)
-- Use guard rings around sensitive analog circuits
-- Filter components close to sensor ICs
+- Keep away from high dv/dt nodes (MOSFET drains)
+- Use guard rings around LM339 comparator circuits
+- RC filter components close to comparator inputs
 
 #### 4. Power Supplies
 
@@ -237,26 +239,26 @@ Width ≈ 5.5mm
 ```
 Commutation Loop (most critical):
 
-    Cbypass ─┬─► IGBT Collector
+    Cbypass ─┬─► MOSFET Drain
              │        │
              │        │ (switch opens)
              │        ↓
-             └──◄ IGBT Emitter
+             └──◄ MOSFET Source
 
 This loop must be TINY (< 50mm perimeter)
 ```
 
 **Implementation:**
-1. Place bypass capacitors **directly adjacent** to IGBT
+1. Place bypass capacitors **directly adjacent** to MOSFET
 2. Use **wide, short traces** (or copper pours)
 3. Use **multiple vias** (10+) to inner power plane
-4. Top layer: C_bypass → IGBT (direct connection)
+4. Top layer: C_bypass → MOSFET (direct connection)
 5. Inner layer: Power plane provides return path
 
 **Priority 2: Bulk capacitance**
 
 ```
-DC Input ──► C_bulk (1000µF) ──► C_bypass ──► IGBT
+DC Input ──► C_bulk (1000µF) ──► C_bypass ──► MOSFET
          │                                   │
          └──────────────GND──────────────────┘
 
@@ -271,10 +273,10 @@ Bypass caps must be < 5mm (handles switching transients)
 - Via spacing: 2-3mm apart
 - Purpose: Low inductance connection to plane
 
-**Example via array for IGBT collector:**
+**Example via array for MOSFET drain:**
 
 ```
-    Collector pad (TO-247)
+    Drain pad (TO-220)
            │
     ┌──────▼──────┐
     │  ● ● ● ●   │  ← 4 vias in a row
@@ -283,7 +285,7 @@ Bypass caps must be < 5mm (handles switching transients)
     │  ● ● ● ●   │  ← 4 vias in a row
     └─────────────┘
 
-    16 vias × 0.5A = 8A capacity (safe for 10A peak)
+    16 vias × 0.5A = 8A capacity (safe for 14A peak)
 ```
 
 ---
@@ -301,7 +303,7 @@ Bypass caps must be < 5mm (handles switching transients)
 **Routing technique:**
 
 ```
-MCU ──100Ω──► ┌─────────────┐ ──► IR2110 HIN
+MCU ──100Ω──► ┌─────────────┐ ──► TLP250 Input (LED)
               │   PCB trace   │
               │   (over GND)  │
               └─────────────┘
@@ -311,8 +313,7 @@ MCU ──100Ω──► ┌─────────────┐ ──►
 ### Gate Drive Signal Routing
 
 **Critical paths:**
-1. IR2110 HO → Gate resistor → IGBT gate (Q1)
-2. IR2110 LO → Gate resistor → IGBT gate (Q2)
+1. TLP250 Output → Gate resistor → MOSFET gate (Q1-Q8)
 
 **Requirements:**
 - **Minimize inductance** (short, wide traces)
@@ -325,39 +326,39 @@ MCU ──100Ω──► ┌─────────────┐ ──►
 ```
          Gate resistor (10Ω)
               ┌───┐
-    HO ───────┤   ├─────┬──► IGBT Gate
+TLP250 OUT────┤   ├─────┬──► MOSFET Gate
               └───┘     │
                         │
-                       10k to Emitter (separate trace)
+                       10k to Source (separate trace)
 ```
 
-### Bootstrap Traces
+### Isolated Power Routing (TLP250)
 
-**Critical:** VS and VB traces carry high dv/dt (fast-switching).
+**Critical:** Each TLP250 requires isolated 15V supply.
 
 **Routing:**
-- Keep D_bootstrap and C_bootstrap **very close** to IR2110
-- Use **short, direct traces**
+- Keep isolated DC-DC converter output **very close** to TLP250
+- Use **0.1µF bypass capacitor** at VCC/GND pins
 - **No sharp corners** (use 45° or curved)
 - Trace width: 0.5mm minimum
 
 **Layout:**
 
 ```
-    +15V ───┬──► D_bs (UF4007)
-            │         │
-           10µF      VB (pin 5) IR2110
-                      │
-                     VS (pin 7) ───► Q1 Emitter (floating)
-                                      │
-                                      └─► Midpoint node
+Isolated DC-DC ───┬──► +15V_ISO_n
+(per TLP250)      │         │
+                 0.1µF     VCC (pin 5) TLP250
+                           │
+                          GND (pin 4) ───► Floating reference
+                                           │
+                                           └─► MOSFET Source
 ```
 
 ---
 
 ## Thermal Management
 
-### IGBT Heatsinking
+### MOSFET Heatsinking
 
 **Calculation:**
 
@@ -366,40 +367,42 @@ Thermal resistance calculation:
 θJA = θJC + θCS + θSA
 
 Where:
-- θJC = Junction-to-case (IGBT): 0.5°C/W (from datasheet)
-- θCS = Case-to-sink (thermal pad): 0.3°C/W
+- θJC = Junction-to-case (IRFZ44N): 0.71°C/W (from datasheet)
+- θCS = Case-to-sink (thermal pad): 0.5°C/W
 - θSA = Sink-to-ambient (heatsink): 5°C/W
 
-Total: θJA = 5.8°C/W
+Total: θJA = 6.21°C/W
 
-For Tamb = 50°C, Tjmax = 125°C:
-Pdiss = (Tjmax - Tamb) / θJA = (125-50) / 5.8 = 12.9W per IGBT
+For Tamb = 50°C, Tjmax = 175°C (MOSFET):
+Pdiss = (Tjmax - Tamb) / θJA = (175-50) / 6.21 = 20.1W per MOSFET
 
-Check: At 50V, 5A, 2% duty cycle:
-Pswitch = 50V × 5A × 0.02 = 5W (OK, < 12.9W)
+MOSFET losses at 10A RMS:
+- Conduction: I²RDS(on) = 10² × 0.0175 = 1.75W
+- Switching: ~2-3W at 5kHz
+- Total: ~4-5W per MOSFET (OK, < 20.1W)
 ```
 
 **Heatsink Selection:**
 
 | Heatsink | θSA (°C/W) | Size (mm) | Mount | Price |
 |----------|------------|-----------|-------|-------|
-| **Small** | 10°C/W | 40×40×20 | TO-247 × 2 | $3 |
-| **Medium** | 5°C/W | 60×50×25 | TO-247 × 4 | $6 |
-| **Large** | 2.5°C/W | 100×50×30 | TO-247 × 8 | $12 |
+| **Small** | 10°C/W | 40×40×20 | TO-220 × 2 | $3 |
+| **Medium** | 5°C/W | 60×50×25 | TO-220 × 4 | $6 |
+| **Large** | 2.5°C/W | 100×50×30 | TO-220 × 8 | $12 |
 
-**Recommended:** Medium heatsink (5°C/W) for 500W continuous operation.
+**Recommended:** Medium heatsink (5°C/W) for 707W continuous operation.
 
 ### PCB Copper Heat Spreading
 
 **Use large copper pours:**
-- Connect IGBT tabs (collectors/emitters) to large areas
+- Connect MOSFET tabs (drains) to large areas
 - Use top copper as heatsink (2oz provides some cooling)
-- Add thermal vias under IGBT pads (connect to inner planes)
+- Add thermal vias under MOSFET pads (connect to inner planes)
 
-**Thermal via array (under IGBT tab):**
+**Thermal via array (under MOSFET tab):**
 
 ```
-    IGBT Package Outline
+    MOSFET Package Outline (TO-220)
     ┌─────────────────┐
     │                 │
     │  ● ● ● ● ● ●   │  ← Thermal vias (0.6mm holes)
@@ -411,7 +414,7 @@ Pswitch = 50V × 5A × 0.02 = 5W (OK, < 12.9W)
 
 ### Forced Air Cooling
 
-**For 500W continuous operation:**
+**For 707W continuous operation:**
 - **Required:** 20 CFM fan (40mm × 40mm)
 - **Placement:** Blow across heatsinks
 - **Direction:** Front-to-back (exhaust hot air)
@@ -420,22 +423,22 @@ Pswitch = 50V × 5A × 0.02 = 5W (OK, < 12.9W)
 
 ## EMI/EMC Considerations
 
-### High dv/dt Nodes (IGBT Collectors)
+### High dv/dt Nodes (MOSFET Drains)
 
-**Problem:** Collectors switch 0V → 50V in ~100ns → dv/dt = 500 V/µs
+**Problem:** Drains switch 0V → 50V in ~100ns → dv/dt = 500 V/µs
 
 **Solutions:**
 
 1. **Snubber circuits** (already in design)
-   - 47Ω + 100nF across each IGBT
+   - 47Ω + 100nF across each MOSFET (drain to source)
    - Damp voltage ringing
 
 2. **Guard rings** around sensitive circuits
-   - GND trace around analog sensors
+   - GND trace around LM339 comparators
    - Connected to Layer 2 GND plane with vias
 
 3. **Keep-out zones**
-   - No sensitive traces under IGBT collectors
+   - No sensitive traces under MOSFET drains
    - Minimum 10mm spacing to sensor circuits
 
 ### Common-Mode Noise
@@ -460,7 +463,7 @@ Pswitch = 50V × 5A × 0.02 = 5W (OK, < 12.9W)
 **Solution:**
 
 1. **Output LC filter** (already in design)
-   - 500µH + 10µF @ 10kHz
+   - 500µH + 10µF @ 5kHz
    - Attenuates switching frequency by 40 dB
 
 2. **Input capacitance** (already in design)
@@ -491,9 +494,9 @@ Required layers:
 
 ```
 Designator, X, Y, Rotation, Layer, Comment
-Q1, 50.0, 75.0, 90, Top, IKW15N120H3
-Q2, 50.0, 65.0, 90, Top, IKW15N120H3
-U1, 35.0, 70.0, 0, Top, IR2110PBF
+Q1, 50.0, 75.0, 90, Top, IRFZ44N
+Q2, 50.0, 65.0, 90, Top, IRFZ44N
+U1, 35.0, 70.0, 0, Top, TLP250
 C1, 45.0, 77.0, 0, Top, 1000uF
 ...
 ```
@@ -502,8 +505,8 @@ C1, 45.0, 77.0, 0, Top, 1000uF
 
 **CSV format with required columns:**
 - Designator (e.g., Q1, U1, R1)
-- Comment/Value (e.g., IKW15N120H3, 10Ω)
-- Footprint (e.g., TO-247-3, DIP-14)
+- Comment/Value (e.g., IRFZ44N, 10Ω)
+- Footprint (e.g., TO-220-3, DIP-8)
 - Manufacturer
 - Manufacturer Part Number
 - Quantity
@@ -523,13 +526,13 @@ C1, 45.0, 77.0, 0, Top, 1000uF
    - Profile: 150°C preheat, 240°C peak, 60s above 220°C
 
 **Step 2: Through-hole components**
-1. Insert through-hole parts (connectors, IGBTs, capacitors)
-2. IGBTs: Use thermal paste on mounting surface
+1. Insert through-hole parts (connectors, MOSFETs, capacitors)
+2. MOSFETs: Use thermal paste on mounting surface
 3. Solder from bottom side
 4. Trim leads
 
 **Step 3: Heatsink mounting**
-1. Clean IGBT surfaces
+1. Clean MOSFET surfaces
 2. Apply thermal paste (thin, even layer)
 3. Place thermal pads (if using electrically isolated heatsinks)
 4. Mount heatsink with screws
@@ -569,8 +572,8 @@ C1, 45.0, 77.0, 0, Top, 1000uF
 
 ### Low-Voltage Tests (12V)
 
-- [ ] Apply +15V to gate driver VCC
-- [ ] Measure VCC at each IR2110 (14.5-15.5V)
+- [ ] Apply +15V to isolated gate driver supplies
+- [ ] Measure VCC at each TLP250 (14.5-15.5V)
 - [ ] Apply +12V to DC bus
 - [ ] Measure DC bus voltage (11.5-12.5V)
 - [ ] Check quiescent current (< 100mA)
@@ -580,16 +583,16 @@ C1, 45.0, 77.0, 0, Top, 1000uF
 
 ### Full Power Tests (50V)
 
-⚠️ **High voltage - extreme caution required!**
+⚠️ **High voltage & high current - extreme caution required!**
 
 - [ ] Discharge capacitors procedure ready
 - [ ] Emergency stop accessible
 - [ ] Apply +50V DC (current limit 2A initially)
 - [ ] Monitor for smoke, smell, overheating
-- [ ] Gradually increase current limit
-- [ ] Test with resistive load (25Ω, 100W)
+- [ ] Gradually increase current limit to 12A
+- [ ] Test with resistive load (10Ω, 200W minimum)
 - [ ] Measure output waveform quality
-- [ ] Check IGBT temperatures (< 80°C)
+- [ ] Check MOSFET temperatures (< 80°C)
 - [ ] Verify efficiency (Pout / Pin > 90%)
 
 ---

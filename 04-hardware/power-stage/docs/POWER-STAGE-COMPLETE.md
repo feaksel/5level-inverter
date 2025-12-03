@@ -79,7 +79,7 @@ This document provides **complete, detailed** schematics and component lists for
 │  │              Sensing Stage (Sigma-Delta ADC)                │  │
 │  │  - LM339 Quad Comparator (4 channels)                      │  │
 │  │  - RC filters + 1-bit DAC feedback                         │  │
-│  │  - FPGA/STM32: CIC decimation (1MHz → 10kHz)              │  │
+│  │  - FPGA/STM32: CIC decimation (1MHz → 5kHz output rate)   │  │
 │  │  - 12-14 bit ENOB resolution                               │  │
 │  └────────────────────┬───────────────────────────────────────┘  │
 │                       │ Digital Sensor Data (SPI/GPIO)           │
@@ -111,7 +111,7 @@ This document provides **complete, detailed** schematics and component lists for
          │                              │
     ┌────┴────┐                    ┌────┴────┐
     │   Q1    │ S1                 │   Q3    │ S3
-    │ IGBT    │ (High-side)        │ IGBT    │ (High-side)
+    │ MOSFET    │ (High-side)        │ MOSFET    │ (High-side)
     │IKW15N120│                    │IKW15N120│
     │         │                    │         │
     │ G─10Ω─┬─┤                    │ G─10Ω─┬─┤
@@ -135,7 +135,7 @@ This document provides **complete, detailed** schematics and component lists for
          │          │                   │
          │     ┌────┴────┐         ┌────┴────┐
          │     │   Q2    │ S2      │   Q4    │ S4
-         │     │ IGBT    │(Low-side)│ IGBT    │(Low-side)
+         │     │ MOSFET    │(Low-side)│ MOSFET    │(Low-side)
          │     │IKW15N120│         │IKW15N120│
          │     │         │         │         │
          │     │ G─10Ω─┬─┤         │ G─10Ω─┬─┤
@@ -164,7 +164,7 @@ This document provides **complete, detailed** schematics and component lists for
 | Ref | Component | Part Number | Qty | Unit Price | Total | Notes |
 |-----|-----------|-------------|-----|------------|-------|-------|
 | **H-Bridge Power Devices** |
-| Q1-Q8 | IGBT 1200V 15A | IKW15N120H3 | 8 | $3.80 | $30.40 | Or STGW15H120DF |
+| Q1-Q8 | MOSFET 55V 49A | IRFZ44N | 8 | $2.00 | $16.00 | TO-220, 17.5mΩ Rds(on) |
 | D1-D8 | Fast Diode 1kV 1A | UF4007 | 8 | $0.15 | $1.20 | Bootstrap diodes |
 | **Gate Drive Components** |
 | Rg1-Rg8 | Gate Resistor 10Ω 2W | - | 8 | $0.25 | $2.00 | Wirewound |
@@ -175,7 +175,7 @@ This document provides **complete, detailed** schematics and component lists for
 | Cbulk1-2 | Bulk Cap 1000µF 100V | - | 2 | $2.50 | $5.00 | Low-ESR |
 | Cbypass | Ceramic 1µF 100V X7R | - | 8 | $0.40 | $3.20 | HF bypass |
 | **Gate Driver ICs** |
-| U1-U4 | Gate Driver IC | IR2110PBF | 4 | $2.50 | $10.00 | Two per bridge |
+| U1-U8 | Optically Isolated Driver | TLP250 | 8 | $3.00 | $24.00 | One per MOSFET, 2.5kV isolation |
 | **Gate Driver Passives** |
 | Cbs1-Cbs4 | Bootstrap Cap 10µF 25V | - | 4 | $0.30 | $1.20 | Ceramic X7R |
 | Dbs1-Dbs4 | Bootstrap Diode | UF4007 | 4 | $0.15 | $0.60 | Fast recovery |
@@ -188,25 +188,16 @@ This document provides **complete, detailed** schematics and component lists for
 
 | Ref | Component | Part Number | Qty | Unit Price | Total | Notes |
 |-----|-----------|-------------|-----|------------|-------|-------|
-| **DC Bus Voltage Sensors (×3)** |
-| U5-U7 | Isolated Amplifier | AMC1301DWV | 3 | $4.50 | $13.50 | DC1, DC2, AC_V |
-| R1a-R1c | Divider High 196kΩ 1% 1W | - | 3 | $0.50 | $1.50 | Metal film |
-| R2a-R2c | Divider Low 1kΩ 1% 1/4W | - | 3 | $0.10 | $0.30 | Metal film |
-| C1a-C1c | Input Filter 100nF 50V | - | 3 | $0.10 | $0.30 | X7R ceramic |
-| R3a-R3c | Output Filter 1kΩ 1% | - | 3 | $0.10 | $0.30 | Metal film |
-| C2a-C2c | Output Filter 100nF 25V | - | 3 | $0.10 | $0.30 | X7R ceramic |
-| Cvdd | VDD Bypass 10µF + 100nF | - | 12 | $0.10 | $1.20 | 2 per IC × 2 caps |
-| D5-D7 | TVS Diode 3.3V | SMAJ3.3CA | 3 | $0.40 | $1.20 | ADC protection |
-| **AC Current Sensor** |
-| U8 | Hall Current Sensor | ACS724-30A | 1 | $8.00 | $8.00 | ±30A range |
-| R4 | Output Filter 1kΩ | - | 1 | $0.10 | $0.10 | Metal film |
-| C4 | Output Filter 100nF | - | 1 | $0.10 | $0.10 | X7R ceramic |
-| Cvcc4 | VCC Bypass 10µF+100nF | - | 2 | $0.10 | $0.20 | Ceramic |
-| D8 | TVS Diode 3.3V | SMAJ3.3CA | 1 | $0.40 | $0.40 | ADC protection |
+| **Sigma-Delta ADC (4 channels: DC1, DC2, AC_V, AC_I)** |
+| U5 | Quad Comparator | LM339 | 1 | $0.50 | $0.50 | 4-channel Sigma-Delta ADC |
+| R_adc | Feedback Resistors 10kΩ | - | 4 | $0.05 | $0.20 | RC filter (1-bit DAC) |
+| C_adc | Feedback Capacitors 10nF | - | 4 | $0.10 | $0.40 | RC filter (1-bit DAC) |
+| R_div | Voltage Dividers 10kΩ | - | 8 | $0.05 | $0.40 | Input scaling |
+| Cvdd5 | VDD Bypass 100nF | - | 1 | $0.10 | $0.10 | Ceramic |
 | **Protection Comparators** |
 | U9 | Quad Comparator | LM339N | 1 | $0.60 | $0.60 | OCP/OVP detect |
 | R_pullup | Pull-up 10kΩ | - | 4 | $0.05 | $0.20 | Comparator outputs |
-| **Subtotal Sensing** | | | | | **$27.60** | |
+| **Subtotal Sensing** | | | | | **$2.40** | |
 
 ### Power Supply BOM
 
