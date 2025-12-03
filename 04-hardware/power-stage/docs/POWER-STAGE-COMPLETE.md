@@ -1,9 +1,9 @@
 # Complete Power Stage Design Guide
 
 **Project:** 5-Level Cascaded H-Bridge Inverter
-**Power Rating:** 500W, 100V RMS AC Output
-**Date:** 2025-12-02
-**Status:** Complete Design with Testing and PCB Guidelines
+**Power Rating:** 707W (~700W), 70.7V RMS / 100V Peak AC Output
+**Date:** 2025-12-03
+**Status:** Updated with Latest Design Specifications (MOSFETs, TLP250, Sigma-Delta ADC)
 
 ---
 
@@ -28,13 +28,16 @@ This document provides **complete, detailed** schematics and component lists for
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
-| **Output Power** | 500 W | Continuous |
-| **Output Voltage** | 100 V RMS | ±141 V peak |
-| **Output Current** | 5 A RMS | ±7.07 A peak |
+| **Output Power** | 707 W | Continuous (~700W) |
+| **Output Voltage** | 70.7 V RMS | 100 V peak AC |
+| **Output Current** | 10 A RMS | ±14 A peak |
 | **DC Input** | 2× 50 VDC | Isolated sources |
-| **Switching Frequency** | 10 kHz | PWM carrier |
-| **Topology** | 2× H-Bridge | 8 switches total |
+| **Switching Frequency** | 5 kHz | PWM carrier (Level-Shifted) |
+| **Topology** | 2× H-Bridge | 8 MOSFETs total (IRFZ44N) |
 | **Voltage Levels** | 5 levels | +100V, +50V, 0, -50V, -100V |
+| **Gate Drivers** | TLP250 | Optically isolated (8 total) |
+| **Control** | STM32F303/F401 | 72/84 MHz ARM Cortex-M4 |
+| **THD Achieved** | 4.9% | Simulink validated |
 
 ---
 
@@ -56,33 +59,35 @@ This document provides **complete, detailed** schematics and component lists for
 │  │              H-Bridge Module 1 + 2                            │ │
 │  │  ┌──────────────────┐    ┌──────────────────┐               │ │
 │  │  │   H-Bridge 1     │    │   H-Bridge 2     │               │ │
-│  │  │  (Q1-Q4 IGBTs)   │    │  (Q5-Q8 IGBTs)   │               │ │
-│  │  │  + Snubbers      │    │  + Snubbers      │               │ │
-│  │  │  + Gate Drivers  │    │  + Gate Drivers  │               │ │
+│  │  │ (Q1-Q4 MOSFETs)  │    │ (Q5-Q8 MOSFETs)  │               │ │
+│  │  │  IRFZ44N 55V/49A │    │  IRFZ44N 55V/49A │               │ │
+│  │  │  + RC Snubbers   │    │  + RC Snubbers   │               │ │
+│  │  │  + TLP250×4      │    │  + TLP250×4      │               │ │
 │  │  └──────┬───────────┘    └──────┬───────────┘               │ │
 │  │         │ Out1                  │ Out2                       │ │
 │  │         └───────────┬───────────┘                            │ │
-│  │                     │ AC Output (5-level)                    │ │
+│  │                     │ AC Output (5-level, 10A RMS)          │ │
 │  └─────────────────────┼────────────────────────────────────────┘ │
 │                        │                                           │
 │  ┌─────────────────────▼────────────────────────────────────────┐ │
 │  │              Output Filter (LC)                              │ │
-│  │  L_filter (500 µH) + C_filter (10 µF) + Damping             │ │
+│  │  L_filter (500 µH, 10A) + C_filter (10 µF) + Damping       │ │
 │  └─────────────────────┬────────────────────────────────────────┘ │
 │                        │ Filtered AC Output                       │
 │                        ↓                                           │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Sensing Stage                                  │  │
-│  │  - Voltage sensing (isolated): AMC1301 × 3                 │  │
-│  │  - Current sensing (isolated): ACS724 × 1                  │  │
-│  │  - Protection circuits                                      │  │
+│  │              Sensing Stage (Sigma-Delta ADC)                │  │
+│  │  - LM339 Quad Comparator (4 channels)                      │  │
+│  │  - RC filters + 1-bit DAC feedback                         │  │
+│  │  - FPGA/STM32: CIC decimation (1MHz → 10kHz)              │  │
+│  │  - 12-14 bit ENOB resolution                               │  │
 │  └────────────────────┬───────────────────────────────────────┘  │
-│                       │ Sensor Outputs (0-3.3V)                  │
+│                       │ Digital Sensor Data (SPI/GPIO)           │
 │  ┌────────────────────▼───────────────────────────────────────┐  │
 │  │         Auxiliary Power Supply                              │  │
-│  │  - Isolated 15V for gate drivers (×2)                      │  │
-│  │  - Isolated 5V for sensing                                 │  │
-│  │  - Control logic power (3.3V)                              │  │
+│  │  - Isolated 15V DC-DC for TLP250 drivers (×8)             │  │
+│  │  - 5V for LM339 comparator                                 │  │
+│  │  - Control logic power (3.3V for STM32)                    │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘

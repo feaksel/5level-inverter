@@ -18,14 +18,14 @@ This folder contains complete hardware documentation for the 5-level cascaded H-
 
 | Parameter | Value |
 |-----------|-------|
-| **Output Power** | 500W continuous |
-| **Output Voltage** | 100V RMS (±141V peak) |
-| **Output Current** | 5A RMS (±7.07A peak) |
+| **Output Power** | 707W continuous (~700W) |
+| **Output Voltage** | 70.7V RMS (100V peak AC) |
+| **Output Current** | 10A RMS (±14A peak) |
 | **DC Input** | 2× 50VDC (isolated) |
 | **Topology** | 2× Cascaded H-Bridges (5 voltage levels) |
-| **Switching Frequency** | 10 kHz PWM |
-| **Target THD** | < 5% |
-| **Total Cost** | ~$218 (prototype quantities) |
+| **Switching Frequency** | 5 kHz PWM |
+| **Target THD** | < 5% (4.9% achieved in simulation) |
+| **Control Platform** | STM32F303/F401 (72/84 MHz ARM Cortex-M4) |
 
 ---
 
@@ -37,24 +37,28 @@ This folder contains complete hardware documentation for the 5-level cascaded H-
 The power stage folder contains comprehensive documentation covering:
 
 1. **[POWER-STAGE-COMPLETE.md](power-stage/docs/POWER-STAGE-COMPLETE.md)** (25 KB)
-   - Complete schematics and system architecture
-   - Full bill of materials ($218) with part numbers
-   - Component selection rationale and calculations
+   - Complete schematics with IRFZ44N MOSFETs + TLP250 drivers
+   - Full bill of materials with part numbers
+   - Component selection rationale (MOSFETs vs IGBTs analysis)
+   - Sigma-Delta ADC sensing design with LM339 comparators
 
 2. **[BREADBOARD-TESTING.md](power-stage/docs/BREADBOARD-TESTING.md)** (38 KB)
-   - 6-stage safe testing procedure (low voltage → full power)
-   - Safety precautions and procedures
+   - Progressive testing procedure for 707W, 10A system
+   - Safety precautions for high-current testing
    - Comprehensive troubleshooting guide
+   - Isolated gate driver validation procedures
 
 3. **[PCB-DESIGN.md](power-stage/docs/PCB-DESIGN.md)** (32 KB)
-   - 4-layer PCB layout and routing guidelines
-   - Thermal management and EMI considerations
-   - Manufacturing specifications
+   - 4-layer PCB layout for 10A continuous operation
+   - High-current trace routing guidelines
+   - Thermal management for MOSFET switching losses
+   - TLP250 isolated driver placement
 
 4. **[ASSEMBLY-GUIDE.md](power-stage/docs/ASSEMBLY-GUIDE.md)** (28 KB)
-   - Step-by-step assembly instructions
-   - Soldering techniques and quality inspection
-   - Initial testing procedures
+   - Step-by-step assembly with MOSFET installation
+   - TLP250 optocoupler driver assembly
+   - Quality inspection and testing
+   - Initial 5kHz PWM validation
 
 **Start here:** [power-stage/README.md](power-stage/README.md) for quick navigation
 
@@ -74,9 +78,9 @@ The power stage folder contains comprehensive documentation covering:
 
 ## Safety Warning
 
-### ⚠️ HIGH VOLTAGE - POTENTIALLY LETHAL
+### ⚠️ HIGH VOLTAGE & HIGH CURRENT - POTENTIALLY LETHAL
 
-This hardware operates at **up to 141V peak** which is **potentially fatal**.
+This hardware operates at **up to 100V peak AC and 10A current** which is **potentially fatal**.
 
 **Essential safety rules:**
 - ❌ **NEVER** work on live circuits
