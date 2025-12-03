@@ -1,9 +1,10 @@
 # PCB Design and Manufacturing Guide
 
 **Project:** 5-Level Cascaded H-Bridge Inverter Power Stage
-**PCB Type:** 4-Layer High-Power PCB
+**Power Rating:** 707W, 70.7V RMS / 100V Peak AC, 10A RMS
+**PCB Type:** 4-Layer High-Power PCB (2oz copper)
 **Dimensions:** 150mm × 100mm
-**Date:** 2025-12-02
+**Date:** 2025-12-03
 
 ---
 
@@ -80,8 +81,8 @@ Total thickness: 1.6mm
 ### Layer Purposes
 
 **Layer 1 (Top - 2oz):**
-- IGBTs, gate drivers, power connectors
-- High-current DC bus traces (up to 10mm wide)
+- MOSFETs (IRFZ44N), TLP250 gate drivers, power connectors
+- High-current DC bus traces (up to 10mm wide for 10A)
 - PWM signal routing
 - Component placement
 

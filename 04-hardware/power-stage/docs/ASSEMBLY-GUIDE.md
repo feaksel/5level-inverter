@@ -1,9 +1,11 @@
 # Complete Assembly Guide
 
 **Project:** 5-Level Cascaded H-Bridge Inverter Power Stage
+**Power Rating:** 707W, 70.7V RMS / 100V Peak AC, 10A RMS
+**Components:** IRFZ44N MOSFETs + TLP250 Isolated Drivers
 **Assembly Level:** Intermediate (soldering experience required)
 **Estimated Time:** 4-6 hours for complete assembly
-**Date:** 2025-12-02
+**Date:** 2025-12-03
 
 ---
 
@@ -13,7 +15,7 @@
 2. [Pre-Assembly Preparation](#pre-assembly-preparation)
 3. [Step 1: SMD Component Assembly](#step-1-smd-component-assembly)
 4. [Step 2: Through-Hole Component Assembly](#step-2-through-hole-component-assembly)
-5. [Step 3: Power Stage Assembly (IG BTs)](#step-3-power-stage-assembly-igbts)
+5. [Step 3: Power Stage Assembly (MOSFETs)](#step-3-power-stage-assembly-mosfets)
 6. [Step 4: Heatsink Installation](#step-4-heatsink-installation)
 7. [Step 5: Connector Installation](#step-5-connector-installation)
 8. [Step 6: Final Inspection](#step-6-final-inspection)
@@ -38,7 +40,7 @@
 | **Multimeter** | True RMS, continuity mode | Testing |
 | **Magnifying Glass** | 5-10× magnification | Inspection |
 | **Hot Air Station** | Optional, for SMD rework | Desolder mistakes |
-| **Thermal Paste** | Non-conductive, silicone-based | IGBT to heatsink |
+| **Thermal Paste** | Non-conductive, silicone-based | MOSFET to heatsink |
 
 ### Safety Equipment
 

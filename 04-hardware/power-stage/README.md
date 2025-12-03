@@ -43,36 +43,36 @@ This folder contains **complete, production-ready documentation** for building t
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
-| **Output Power** | 500 W | Continuous operation |
-| **Output Voltage** | 100 V RMS | ±141 V peak (sine wave) |
-| **Output Current** | 5 A RMS | ±7.07 A peak |
+| **Output Power** | 707 W | Continuous operation (~700W) |
+| **Output Voltage** | 70.7 V RMS | 100 V peak AC (sine wave) |
+| **Output Current** | 10 A RMS | ±14 A peak |
 | **Output Frequency** | 50/60 Hz | Configurable |
 | **DC Input** | 2× 50 VDC | Isolated sources required |
-| **Switching Frequency** | 10 kHz | PWM carrier frequency |
-| **Topology** | 2× H-Bridge | 8 IGBTs total (cascaded) |
+| **Switching Frequency** | 5 kHz | PWM carrier frequency |
+| **Topology** | 2× H-Bridge | 8 MOSFETs total (cascaded) |
 | **Voltage Levels** | 5 levels | +100V, +50V, 0V, -50V, -100V |
-| **THD Target** | < 5% | With proper filtering |
-| **Efficiency** | > 90% | Typical at rated load |
+| **THD Target** | < 5% | 4.9% achieved in simulation |
+| **Efficiency** | > 95% | Target at rated load |
 
 ---
 
 ## Complete Bill of Materials Summary
 
-**Total Cost:** ~$218 (prototype quantities)
+**Total Cost:** Updated for MOSFETs + TLP250 configuration
 
 ### Major Components
 
 | Category | Key Parts | Total Cost |
 |----------|-----------|------------|
-| **Power Switches** | 8× IGBT (IKW15N120H3) | $30.40 |
-| **Gate Drivers** | 4× IR2110 | $10.00 |
+| **Power Switches** | 8× MOSFET (IRFZ44N - 55V, 49A) | $16.00 |
+| **Gate Drivers** | 8× TLP250 (optically isolated) | $24.00 |
 | **DC Bus Caps** | 2× 1000µF + 8× 1µF | $8.20 |
-| **Sensors** | 3× AMC1301 + 1× ACS724 | $21.50 |
-| **Power Supplies** | Isolated DC-DC converters | $39.00 |
+| **Sensing** | Sigma-Delta ADC + LM339 comparator | $15.00 |
+| **Isolated Power** | DC-DC converters for gate drivers | $40.00 |
 | **Output Filter** | 500µH + 10µF | $13.00 |
-| **Heatsinks** | 2× Medium (5°C/W) | $12.00 |
+| **Heatsinks** | 2× Medium (for MOSFETs) | $12.00 |
 | **PCB** | 4-layer, 150×100mm | $50.00 |
-| **Passives & Hardware** | Resistors, caps, connectors | $34.21 |
+| **Passives & Hardware** | Resistors, caps, snubbers, connectors | $35.00 |
 
 **See:** [POWER-STAGE-COMPLETE.md#complete-bill-of-materials](docs/POWER-STAGE-COMPLETE.md#complete-bill-of-materials) for detailed BOM with part numbers.
 
