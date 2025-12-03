@@ -1,37 +1,40 @@
 /**
  * @file custom_core_wrapper.v
- * @brief Wrapper for Custom RV32IM Core - DROP-IN Replacement for VexRiscv
+ * @brief Wrapper for Custom RV32IM Core - Simple Passthrough (Approach 2)
  *
- * This module wraps the custom RISC-V core to provide the EXACT SAME
- * Wishbone interface as vexriscv_wrapper.v, making it a drop-in replacement.
+ * This wrapper provides the exact same Wishbone interface as vexriscv_wrapper.v,
+ * making it a DROP-IN replacement. Since the custom core uses native Wishbone
+ * (Approach 2), this wrapper is just a simple passthrough with no conversion.
  *
- * IMPLEMENTATION STATUS: TEMPLATE/PLACEHOLDER
- *
- * TODO: Implement this module according to DROP_IN_REPLACEMENT_GUIDE.md
- *
- * The wrapper connects your custom core (which can use cmd/rsp or native
- * Wishbone) to the SoC's Wishbone buses. All peripherals, memory, and
- * firmware will work unchanged once you implement this wrapper.
- *
- * See: docs/DROP_IN_REPLACEMENT_GUIDE.md for complete implementation details
+ * IMPLEMENTATION APPROACH: Native Wishbone (Approach 2)
+ * - Core uses Wishbone natively
+ * - Wrapper just connects signals directly
+ * - No protocol conversion needed
+ * - Clean and simple!
  *
  * @author Custom RISC-V Core Team
  * @date 2025-12-03
- * @version 0.1 - Template/Placeholder
+ * @version 0.2 - Approach 2: Passthrough Wrapper
  */
 
 module custom_core_wrapper (
     input  wire        clk,
     input  wire        rst_n,
 
-    // Wishbone Instruction Bus (master)
+    //==========================================================================
+    // Wishbone Instruction Bus (master) - TO SoC
+    //==========================================================================
+
     output wire [31:0] ibus_addr,
     output wire        ibus_cyc,
     output wire        ibus_stb,
     input  wire        ibus_ack,
     input  wire [31:0] ibus_dat_i,
 
-    // Wishbone Data Bus (master)
+    //==========================================================================
+    // Wishbone Data Bus (master) - TO SoC
+    //==========================================================================
+
     output wire [31:0] dbus_addr,
     output wire [31:0] dbus_dat_o,
     input  wire [31:0] dbus_dat_i,
@@ -42,132 +45,92 @@ module custom_core_wrapper (
     input  wire        dbus_ack,
     input  wire        dbus_err,
 
+    //==========================================================================
     // Interrupts
+    //==========================================================================
+
     input  wire [31:0] external_interrupt
 );
 
     //==========================================================================
-    // PLACEHOLDER IMPLEMENTATION
+    // APPROACH 2: SIMPLE PASSTHROUGH
     //==========================================================================
 
     /**
-     * This is a PLACEHOLDER to allow the SoC to compile.
+     * Since custom_riscv_core uses native Wishbone (Approach 2),
+     * this wrapper is extremely simple - just connect signals!
      *
-     * TO IMPLEMENT YOUR CUSTOM CORE:
+     * No protocol conversion needed.
+     * No state machines needed.
+     * Just wire connections!
      *
-     * 1. Review docs/DROP_IN_REPLACEMENT_GUIDE.md
-     * 2. Decide on approach:
-     *    - Approach 1: Core with cmd/rsp interface (match VexRiscv exactly)
-     *    - Approach 2: Core with native Wishbone (cleaner design)
-     * 3. Implement custom_riscv_core.v (in this directory)
-     * 4. Replace this placeholder with real wrapper (see guide for template)
-     * 5. Add Zpec custom instructions to your core
-     * 6. Test with existing peripherals and firmware
-     *
-     * The guide provides:
-     * - Complete VexRiscv interface analysis
-     * - Full wrapper template with examples
-     * - Zpec instruction specifications
-     * - Week-by-week implementation roadmap
-     * - Testing strategies
+     * This is the beauty of using standard Wishbone natively.
      */
 
-    // For now, tie off outputs to prevent synthesis errors
-    assign ibus_addr = 32'h0;
-    assign ibus_cyc = 1'b0;
-    assign ibus_stb = 1'b0;
+    //==========================================================================
+    // Custom Core Instantiation
+    //==========================================================================
 
-    assign dbus_addr = 32'h0;
-    assign dbus_dat_o = 32'h0;
-    assign dbus_we = 1'b0;
-    assign dbus_sel = 4'h0;
-    assign dbus_cyc = 1'b0;
-    assign dbus_stb = 1'b0;
+    custom_riscv_core #(
+        .RESET_VECTOR(32'h00000000)  // Start of ROM
+    ) cpu (
+        .clk(clk),
+        .rst_n(rst_n),
 
-    // Synthesis-time warning
+        // Instruction Wishbone Bus - Direct connection!
+        .iwb_adr_o(ibus_addr),
+        .iwb_dat_i(ibus_dat_i),
+        .iwb_cyc_o(ibus_cyc),
+        .iwb_stb_o(ibus_stb),
+        .iwb_ack_i(ibus_ack),
+
+        // Data Wishbone Bus - Direct connection!
+        .dwb_adr_o(dbus_addr),
+        .dwb_dat_o(dbus_dat_o),
+        .dwb_dat_i(dbus_dat_i),
+        .dwb_we_o(dbus_we),
+        .dwb_sel_o(dbus_sel),
+        .dwb_cyc_o(dbus_cyc),
+        .dwb_stb_o(dbus_stb),
+        .dwb_ack_i(dbus_ack),
+        .dwb_err_i(dbus_err),
+
+        // Interrupts
+        .interrupts(external_interrupt)
+    );
+
+    //==========================================================================
+    // That's it! No conversion logic needed for Approach 2.
+    //==========================================================================
+
+    /**
+     * Compare this to Approach 1 (cmd/rsp):
+     * - Approach 1 needs ~100 lines of conversion logic
+     * - Approach 2 needs ~5 lines (just wire connections)
+     *
+     * This is why Approach 2 is cleaner and more reusable!
+     */
+
+    // Synthesis-time info
     // synthesis translate_off
     initial begin
         $display("");
         $display("=================================================================");
-        $display("WARNING: custom_core_wrapper is a PLACEHOLDER!");
+        $display("INFO: custom_core_wrapper - Approach 2 (Simple Passthrough)");
         $display("=================================================================");
-        $display("This module needs to be implemented with your custom RV32IM core.");
+        $display("This wrapper uses DIRECT WISHBONE passthrough.");
         $display("");
-        $display("See: 02-embedded/riscv/docs/DROP_IN_REPLACEMENT_GUIDE.md");
-        $display("     for complete implementation instructions.");
+        $display("Advantages:");
+        $display("  - No protocol conversion needed");
+        $display("  - Just ~5 lines of wire connections");
+        $display("  - Clean and easy to understand");
+        $display("  - Zero latency overhead");
         $display("");
-        $display("The guide includes:");
-        $display("  - VexRiscv interface specification");
-        $display("  - Complete wrapper template");
-        $display("  - Zpec custom instruction designs");
-        $display("  - Step-by-step implementation roadmap");
+        $display("The core (custom_riscv_core.v) uses native Wishbone,");
+        $display("so this wrapper is just a passthrough module.");
         $display("=================================================================");
         $display("");
     end
     // synthesis translate_on
-
-    //==========================================================================
-    // UNCOMMENT WHEN IMPLEMENTING:
-    //==========================================================================
-
-    /*
-    // Reset polarity conversion
-    wire reset = !rst_n;
-
-    // Custom core native signals
-    wire        core_ibus_cmd_valid;
-    wire        core_ibus_cmd_ready;
-    wire [31:0] core_ibus_cmd_payload_pc;
-    wire        core_ibus_rsp_valid;
-    wire        core_ibus_rsp_payload_error;
-    wire [31:0] core_ibus_rsp_payload_inst;
-
-    wire        core_dbus_cmd_valid;
-    wire        core_dbus_cmd_ready;
-    wire        core_dbus_cmd_payload_wr;
-    wire [3:0]  core_dbus_cmd_payload_mask;
-    wire [31:0] core_dbus_cmd_payload_address;
-    wire [31:0] core_dbus_cmd_payload_data;
-    wire [1:0]  core_dbus_cmd_payload_size;
-    wire        core_dbus_rsp_ready;
-    wire        core_dbus_rsp_error;
-    wire [31:0] core_dbus_rsp_data;
-
-    // Custom core instantiation
-    custom_riscv_core #(
-        .RESET_VECTOR(32'h00000000)
-    ) cpu (
-        .clk(clk),
-        .reset(reset),
-
-        // Instruction bus (cmd/rsp)
-        .iBus_cmd_valid(core_ibus_cmd_valid),
-        .iBus_cmd_ready(core_ibus_cmd_ready),
-        .iBus_cmd_payload_pc(core_ibus_cmd_payload_pc),
-        .iBus_rsp_valid(core_ibus_rsp_valid),
-        .iBus_rsp_payload_error(core_ibus_rsp_payload_error),
-        .iBus_rsp_payload_inst(core_ibus_rsp_payload_inst),
-
-        // Data bus (cmd/rsp)
-        .dBus_cmd_valid(core_dbus_cmd_valid),
-        .dBus_cmd_ready(core_dbus_cmd_ready),
-        .dBus_cmd_payload_wr(core_dbus_cmd_payload_wr),
-        .dBus_cmd_payload_mask(core_dbus_cmd_payload_mask),
-        .dBus_cmd_payload_address(core_dbus_cmd_payload_address),
-        .dBus_cmd_payload_data(core_dbus_cmd_payload_data),
-        .dBus_cmd_payload_size(core_dbus_cmd_payload_size),
-        .dBus_rsp_ready(core_dbus_rsp_ready),
-        .dBus_rsp_error(core_dbus_rsp_error),
-        .dBus_rsp_data(core_dbus_rsp_data),
-
-        // Interrupts
-        .timerInterrupt(1'b0),
-        .externalInterrupt(|external_interrupt),
-        .softwareInterrupt(1'b0)
-    );
-
-    // cmd/rsp to Wishbone adapters
-    // See DROP_IN_REPLACEMENT_GUIDE.md for complete implementation
-    */
 
 endmodule
