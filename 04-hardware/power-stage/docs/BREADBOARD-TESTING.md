@@ -1,9 +1,10 @@
 # Breadboard Testing and Prototyping Guide
 
 **Project:** 5-Level Cascaded H-Bridge Inverter
+**Power Rating:** 707W, 70.7V RMS / 100V Peak AC, 10A RMS
 **Document:** Breadboard Prototype Assembly and Testing
-**Date:** 2025-12-02
-**Safety Level:** ⚠️ **HIGH VOLTAGE - READ SAFETY SECTION FIRST**
+**Date:** 2025-12-03
+**Safety Level:** ⚠️ **HIGH VOLTAGE & HIGH CURRENT - READ SAFETY SECTION FIRST**
 
 ---
 
@@ -23,9 +24,9 @@
 
 ## Safety Precautions
 
-### ⚠️ DANGER - HIGH VOLTAGE
+### ⚠️ DANGER - HIGH VOLTAGE & HIGH CURRENT
 
-This project involves potentially **LETHAL VOLTAGES** (up to 141V peak). Follow these rules:
+This project involves potentially **LETHAL VOLTAGES AND CURRENTS** (up to 100V peak AC, 10A RMS). Follow these rules:
 
 ### Mandatory Safety Rules
 
@@ -67,10 +68,10 @@ This project involves potentially **LETHAL VOLTAGES** (up to 141V peak). Follow 
 | **Oscilloscope** | 2+ channels, 100 MHz | PWM waveform verification |
 | **Digital Multimeter** | True RMS, 600V rating | Voltage/current measurement |
 | **Function Generator** | 0-20 kHz, 5V output | PWM signal generation |
-| **DC Power Supply** | 0-50V, 5A, isolated | DC bus supply |
+| **DC Power Supply** | 0-50V, 10A+, isolated | DC bus supply (10A continuous) |
 | **Bench Power Supply** | 5V/15V, 2A | Logic and gate driver supply |
-| **Current Probe** | DC-20 kHz, 10A | Load current measurement |
-| **Resistive Load** | 25Ω, 100W | Safe initial testing |
+| **Current Probe** | DC-20 kHz, 15A+ | Load current measurement (14A peak) |
+| **Resistive Load** | 10Ω, 200W minimum | Safe initial testing (700W rated) |
 
 ### Breadboard Supplies
 
