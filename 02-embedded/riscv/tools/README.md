@@ -1,52 +1,146 @@
 # RISC-V Core Build System
 
-This directory contains the build system and tools for the RISC-V RV32IM custom core project.
+**⚠️ IMPORTANT: This directory contains legacy build scripts.**
 
-## Quick Start
+**For current development, use the new workflow in:**
+- **`../synthesis/opensource/`** - For testing and synthesis at home
+- See `../README.md` for complete instructions
 
-### 1. Check Environment
+---
+
+## New Workflow (Recommended)
+
+**For homework and current development:**
+
+```bash
+# Navigate to the new build directory
+cd ../synthesis/opensource
+
+# Run all tests
+make test
+
+# Run individual tests
+make sim-regfile
+make sim-alu
+make sim-decoder
+
+# Lint checking
+make lint
+
+# Synthesis
+make synth
+
+# View waveforms
+make wave-regfile
+make wave-alu
+make wave-decoder
+
+# See help
+make help
+```
+
+**Complete documentation:**
+- **Quick Start:** `../rtl/core/QUICK_START.md`
+- **Testing Guide:** `../sim/README.md`
+- **Open-Source Workflow:** `../synthesis/opensource/README.md`
+- **Main README:** `../README.md`
+
+---
+
+## What's Different?
+
+### Old Workflow (This Directory)
+- Generic Makefile for module creation
+- Separate testbench directory structure
+- Less focused on homework requirements
+
+### New Workflow (synthesis/opensource/)
+- **Homework-specific** build system
+- **Comprehensive testbenches** with 40+ test cases
+- **Dual workflow** support (home + school)
+- **Integrated synthesis** (Yosys + Cadence)
+- **Better documentation** with step-by-step guides
+
+---
+
+## Migration Guide
+
+If you were using this directory, here's how to switch:
+
+### Old Command → New Command
+
+| Old Command | New Command |
+|-------------|-------------|
+| `make test MODULE=regfile` | `cd ../synthesis/opensource && make sim-regfile` |
+| `make test MODULE=alu` | `cd ../synthesis/opensource && make sim-alu` |
+| `make waves MODULE=regfile` | `cd ../synthesis/opensource && make wave-regfile` |
+| `make lint` | `cd ../synthesis/opensource && make lint` |
+| `make test-all` | `cd ../synthesis/opensource && make test` |
+
+### File Locations
+
+| Old Location | New Location |
+|--------------|--------------|
+| `../sim/testbenches/tb_regfile.v` | `../sim/testbench/tb_regfile.v` ✅ (exists) |
+| `../sim/testbenches/tb_alu.v` | `../sim/testbench/tb_alu.v` ✅ (exists) |
+| Build artifacts in `../sim/build/` | Build artifacts in `../synthesis/opensource/build/` |
+| Waveforms in `../sim/waves/` | Waveforms in `../synthesis/opensource/build/` |
+
+---
+
+## Why Switch?
+
+The new workflow in `synthesis/opensource/` provides:
+
+1. ✅ **Complete testbenches** - 40+ test cases ready to use
+2. ✅ **Homework integration** - Aligned with RTL-to-GDSII assignment
+3. ✅ **Better documentation** - Step-by-step guides
+4. ✅ **Dual workflow** - Open-source at home, Cadence at school
+5. ✅ **Synthesis support** - Yosys and Cadence scripts ready
+6. ✅ **Detailed error messages** - Tests tell you exactly what's wrong
+7. ✅ **Quick start guide** - Get running in 5 minutes
+
+---
+
+## Legacy Commands (Still Available)
+
+If you want to use this directory's Makefile (not recommended for homework):
+
+### Environment Check
 
 ```bash
 make env-check
 ```
 
-This verifies that all required tools are installed.
+Verifies that all required tools are installed.
 
-### 2. Create a New Module
+### Create a New Module
 
 ```bash
 make new-module NAME=regfile
 ```
 
-This creates:
+Creates:
 - `../rtl/core/regfile.v` (module template)
 - `../sim/testbenches/tb_regfile.v` (testbench template)
 
-### 3. Run Tests
+**Note:** The new workflow already has better templates in place!
+
+### Run Tests
 
 ```bash
 make test MODULE=regfile
 ```
 
-This compiles and runs the testbench using Icarus Verilog (default).
+**Better:** Use `cd ../synthesis/opensource && make sim-regfile` instead.
 
-### 4. View Waveforms
+### View Waveforms
 
 ```bash
 make waves MODULE=regfile
 ```
 
-Opens GTKWave to view the simulation waveforms.
-
-## Available Commands
-
-### Simulation
-
-```bash
-make test MODULE=<name>          # Run testbench
-make sim MODULE=<name>           # Same as test
-make waves MODULE=<name>         # View waveforms
-```
+**Better:** Use `cd ../synthesis/opensource && make wave-regfile` instead.
 
 ### Multiple Module Tests
 
@@ -58,17 +152,7 @@ make test-core                   # Test full core
 make test-all                    # Run all tests
 ```
 
-### Program Compilation
-
-```bash
-# Assemble a RISC-V assembly program
-make <program>.elf               # Compile
-make <program>.hex               # Convert to hex
-
-# Example:
-make add_test.elf
-make add_test.hex
-```
+**Better:** Use `cd ../synthesis/opensource && make test` instead.
 
 ### Cleanup
 
@@ -77,44 +161,9 @@ make clean                       # Remove build artifacts
 make distclean                   # Deep clean
 ```
 
-### Development Tools
+---
 
-```bash
-make lint                        # Run Verilator linter
-make synth-check                 # Run synthesis check (Yosys)
-make info                        # Show project information
-make env-check                   # Check tool installation
-make quickstart                  # Show quick start guide
-make help                        # Show available targets
-```
-
-## Simulator Selection
-
-### Using Icarus Verilog (default)
-
-```bash
-make test MODULE=regfile
-```
-
-### Using Verilator
-
-```bash
-make test MODULE=regfile SIMULATOR=verilator
-```
-
-## File Structure
-
-```
-tools/
-├── Makefile              # Main build system
-└── README.md             # This file
-
-Generated directories:
-../sim/build/             # Build artifacts
-../sim/waves/             # Waveform files (.vcd)
-```
-
-## Required Tools
+## Required Tools (Same for Both Workflows)
 
 ### Simulation
 
@@ -128,147 +177,98 @@ Generated directories:
   sudo apt-get install gtkwave
   ```
 
-- **Verilator** (optional, faster simulation)
+- **Verilator** (lint checking)
   ```bash
   sudo apt-get install verilator
   ```
 
-### RISC-V Toolchain
+### Synthesis
+
+- **Yosys** (open-source synthesis)
+  ```bash
+  sudo apt-get install yosys
+  ```
+
+### RISC-V Toolchain (Optional - for firmware)
 
 - **GCC for RISC-V**
   ```bash
-  # Option 1: Install prebuilt
+  # Ubuntu/Debian
   sudo apt-get install gcc-riscv64-unknown-elf
 
-  # Option 2: Build from source
+  # Or build from source
   git clone https://github.com/riscv/riscv-gnu-toolchain
   cd riscv-gnu-toolchain
   ./configure --prefix=/opt/riscv --with-arch=rv32im --with-abi=ilp32
   make
   ```
 
-- Set toolchain prefix (if needed):
-  ```bash
-  export RISCV_PREFIX=riscv32-unknown-elf-
-  ```
+---
 
-### Optional Tools
+## Recommended Next Steps
 
-- **Yosys** (synthesis check)
-  ```bash
-  sudo apt-get install yosys
-  ```
+1. **Read the main README:**
+   ```bash
+   less ../README.md
+   ```
 
-## Example Workflow
+2. **Follow the homework guide:**
+   ```bash
+   less ../docs/HOMEWORK_GUIDE.md
+   ```
 
-### 1. Implement Register File
+3. **Use the new workflow:**
+   ```bash
+   cd ../synthesis/opensource
+   make help
+   ```
 
-```bash
-# Create module
-make new-module NAME=regfile
-
-# Edit implementation
-vim ../rtl/core/regfile.v
-
-# Edit testbench
-vim ../sim/testbenches/tb_regfile.v
-
-# Run simulation
-make test MODULE=regfile
-
-# View waveforms
-make waves MODULE=regfile
-```
-
-### 2. Implement ALU
-
-```bash
-make new-module NAME=alu
-# ... edit files ...
-make test MODULE=alu
-```
-
-### 3. Run All Tests
-
-```bash
-make test-all
-```
-
-## Debugging Tips
-
-### Viewing Signals
-
-Edit your testbench to add signal monitoring:
-
-```verilog
-initial begin
-    $monitor("Time=%0t clk=%b rst_n=%b data=%h",
-             $time, clk, rst_n, data);
-end
-```
-
-### Waveform Analysis
-
-Use GTKWave to:
-1. Add signals to waveform viewer
-2. Use zoom and measurement tools
-3. Search for specific values or transitions
-4. Export screenshots
-
-### Simulation Verbosity
-
-Add to your testbench:
-
-```verilog
-initial begin
-    $display("Starting test...");
-    // ... tests ...
-    $display("Test completed!");
-end
-```
-
-## Troubleshooting
-
-### "Module not found" error
-
-Make sure your module file exists in `../rtl/core/<MODULE>.v`
-
-### "Testbench not found" error
-
-Create testbench: `make new-module NAME=<MODULE>`
-
-### RISC-V toolchain not found
-
-Install toolchain or set `RISCV_PREFIX` environment variable:
-
-```bash
-export RISCV_PREFIX=riscv32-unknown-elf-
-```
-
-### Waveform file not found
-
-Run simulation first: `make test MODULE=<MODULE>`
-
-## Tips for Development
-
-1. **Start small**: Begin with simple modules (regfile, ALU)
-2. **Test incrementally**: Test each module before integrating
-3. **Use waveforms**: Visual debugging is powerful
-4. **Write assertions**: Add checks in your testbenches
-5. **Follow the roadmap**: See `docs/IMPLEMENTATION_ROADMAP.md`
-
-## Additional Resources
-
-- **Documentation**: `../docs/IMPLEMENTATION_ROADMAP.md`
-- **Requirements**: `../docs/CUSTOM_CORE_REQUIREMENTS.md`
-- **Main README**: `../README.md`
-- **Project guidelines**: `../../CLAUDE.md`
-
-## Contact
-
-For questions or issues, refer to the main project documentation.
+4. **Start implementing:**
+   ```bash
+   # Follow step-by-step guide
+   less ../rtl/core/QUICK_START.md
+   ```
 
 ---
 
-**Last Updated:** 2025-12-03
-**Version:** 1.0
+## Additional Resources
+
+### Primary Documentation (Use These!)
+
+- **Main README:** `../README.md` ⭐⭐⭐
+- **Homework Guide:** `../docs/HOMEWORK_GUIDE.md` ⭐⭐⭐
+- **Quick Start:** `../rtl/core/QUICK_START.md` ⭐⭐⭐
+- **Testing Guide:** `../sim/README.md` ⭐⭐
+- **Open-Source Workflow:** `../synthesis/opensource/README.md` ⭐⭐
+
+### Legacy Documentation (Outdated)
+
+- ~~`../docs/IMPLEMENTATION_ROADMAP.md`~~ (superseded by HOMEWORK_GUIDE.md)
+- ~~`../docs/CUSTOM_CORE_REQUIREMENTS.md`~~ (if exists, outdated)
+
+### Project Guidelines
+
+- **Claude.md:** `../../../CLAUDE.md` (project-wide guidelines)
+
+---
+
+## Support
+
+**For homework and current development:**
+1. Check `../README.md`
+2. Read `../docs/HOMEWORK_GUIDE.md`
+3. Use `../synthesis/opensource/` workflow
+4. Follow `../rtl/core/QUICK_START.md`
+
+**For questions:**
+1. Check documentation (usually has the answer)
+2. Read error messages (tests are very detailed)
+3. View waveforms (shows exactly what happened)
+4. Check RISC-V ISA manual
+5. Ask TA/professor
+
+---
+
+**Status:** Legacy (use `../synthesis/opensource/` instead)
+**Last Updated:** 2025-12-05
+**Superseded By:** `../synthesis/opensource/README.md`
