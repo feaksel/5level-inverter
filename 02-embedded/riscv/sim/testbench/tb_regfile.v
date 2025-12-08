@@ -90,10 +90,12 @@ module tb_regfile;
         // Test 1: Write and read single register
         //======================================================================
         $display("Test 1: Write and read x5");
+        @(negedge clk);  // Wait for negedge to set up signals
         rd_addr = 5;
         rd_data = 32'hDEADBEEF;
         rd_wen = 1;
-        @(posedge clk);
+        @(posedge clk);  // Write happens here
+        @(negedge clk);
         rd_wen = 0;
         @(posedge clk);
 
@@ -129,10 +131,12 @@ module tb_regfile;
         //======================================================================
         $display("");
         $display("Test 3: x0 hardwired to 0 (write ignored)");
+        @(negedge clk);  // Set up signals at negedge
         rd_addr = 0;
         rd_data = 32'hBADBADBA;
         rd_wen = 1;
-        @(posedge clk);
+        @(posedge clk);  // Write attempt (should be ignored)
+        @(negedge clk);
         rd_wen = 0;
         @(posedge clk);
 
@@ -154,21 +158,25 @@ module tb_regfile;
         $display("Test 4: Write and read multiple registers");
 
         // Write x1 = 0x11111111
+        @(negedge clk);  // Set up signals at negedge
         rd_addr = 1;
         rd_data = 32'h11111111;
         rd_wen = 1;
-        @(posedge clk);
+        @(posedge clk);  // Write happens here
 
         // Write x2 = 0x22222222
+        @(negedge clk);  // Wait for negedge before changing signals!
         rd_addr = 2;
         rd_data = 32'h22222222;
         @(posedge clk);
 
         // Write x31 = 0xFFFFFFFF
+        @(negedge clk);  // Wait for negedge before changing signals!
         rd_addr = 31;
         rd_data = 32'hFFFFFFFF;
         @(posedge clk);
 
+        @(negedge clk);  // Wait for negedge before disabling write!
         rd_wen = 0;
         @(posedge clk);
 
@@ -228,11 +236,12 @@ module tb_regfile;
         //======================================================================
         $display("");
         $display("Test 6: Simultaneous write and read");
+        @(negedge clk);  // Set up signals at negedge
         rd_addr = 10;
         rd_data = 32'h12345678;
         rd_wen = 1;
         rs1_addr = 10;
-        @(posedge clk);
+        @(posedge clk);  // Write happens here
         #1;  // Wait for read
 
         tests = tests + 1;

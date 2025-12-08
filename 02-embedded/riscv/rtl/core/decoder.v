@@ -1,23 +1,3 @@
-/**
- * @file decoder.v
- * @brief Instruction Decoder for RISC-V Core
- *
- * The decoder:
- * - Extracts fields from 32-bit instruction
- * - Generates control signals for the datapath
- * - Identifies instruction type (R, I, S, B, U, J)
- * - Computes immediate values
- * - Generates ALU operation codes
- *
- * This is the THIRD module to implement because:
- * - Builds on understanding of RISC-V ISA
- * - Pure combinational logic
- * - Critical for correct instruction execution
- *
- * @author Custom RISC-V Core Team
- * @date 2025-12-03
- */
-
 `include "riscv_defines.vh"
 
 module decoder (
@@ -70,8 +50,6 @@ module decoder (
     //==========================================================================
 
     /**
-     * TODO: Implement immediate decoding for each instruction type
-     *
      * RISC-V has 6 immediate formats:
      *
      * I-type: [31:20] = imm[11:0]
@@ -101,27 +79,27 @@ module decoder (
         case (opcode)
             `OPCODE_OP_IMM, `OPCODE_LOAD, `OPCODE_JALR: begin
                 // I-type immediate
-                immediate = 32'h0;  // TODO: Implement
+                 immediate = {{20{instruction[31]}}, instruction[31:20]};
             end
 
             `OPCODE_STORE: begin
                 // S-type immediate
-                immediate = 32'h0;  // TODO: Implement
+                immediate = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
             end
 
             `OPCODE_BRANCH: begin
-                // B-type immediate
-                immediate = 32'h0;  // TODO: Implement
+                // B-type immediate (sign-extended from 13 bits)
+                immediate = {{20{instruction[31]}}, instruction[7], instruction[30:25], instruction[11:8], 1'b0};
             end
 
             `OPCODE_LUI, `OPCODE_AUIPC: begin
                 // U-type immediate
-                immediate = 32'h0;  // TODO: Implement
+                 immediate = {instruction[31:12], 12'h0};
             end
 
             `OPCODE_JAL: begin
-                // J-type immediate
-                immediate = 32'h0;  // TODO: Implement
+                // J-type immediate (sign-extended from 21 bits)
+                immediate = {{12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0};
             end
 
             default: begin
@@ -135,8 +113,6 @@ module decoder (
     //==========================================================================
 
     /**
-     * TODO: Implement control signal generation
-     *
      * Based on opcode and funct3/funct7, generate:
      * - alu_op: Which ALU operation to perform
      * - alu_src_imm: Use immediate (1) or rs2 (0) as ALU operand
@@ -162,47 +138,86 @@ module decoder (
         case (opcode)
             `OPCODE_OP_IMM: begin
                 // I-type arithmetic (ADDI, SLTI, XORI, etc.)
-                // TODO: Implement
+                alu_src_imm = 1'b1;
+                reg_write = 1'b1;
+            case (funct3)
+                `FUNCT3_ADD_SUB: alu_op = `ALU_OP_ADD;   // ADDI
+                `FUNCT3_SLT:     alu_op = `ALU_OP_SLT;   // SLTI
+                `FUNCT3_SLTU:    alu_op = `ALU_OP_SLTU;  // SLTIU
+                `FUNCT3_XOR:     alu_op = `ALU_OP_XOR;   // XORI
+                `FUNCT3_OR:      alu_op = `ALU_OP_OR;    // ORI
+                `FUNCT3_AND:     alu_op = `ALU_OP_AND;   // ANDI
+                `FUNCT3_SLL:     alu_op = `ALU_OP_SLL;   // SLLI
+                `FUNCT3_SRL_SRA: alu_op = instruction[30] ? `ALU_OP_SRA : `ALU_OP_SRL; // SRLI/SRAI
+            endcase                
+
             end
 
             `OPCODE_OP: begin
                 // R-type arithmetic (ADD, SUB, AND, OR, etc.)
-                // TODO: Implement
+                alu_src_imm = 1'b0;  // Use rs2
+                reg_write = 1'b1;
+                case (funct3)
+                    `FUNCT3_ADD_SUB: alu_op = funct7[5] ? `ALU_OP_SUB : `ALU_OP_ADD;  // ADD/SUB
+                    `FUNCT3_SLL:     alu_op = `ALU_OP_SLL;
+                    `FUNCT3_SLT:     alu_op = `ALU_OP_SLT;
+                    `FUNCT3_SLTU:    alu_op = `ALU_OP_SLTU;
+                    `FUNCT3_XOR:     alu_op = `ALU_OP_XOR;
+                    `FUNCT3_SRL_SRA: alu_op = funct7[5] ? `ALU_OP_SRA : `ALU_OP_SRL;
+                    `FUNCT3_OR:      alu_op = `ALU_OP_OR;
+                    `FUNCT3_AND:     alu_op = `ALU_OP_AND;
+                endcase
             end
 
             `OPCODE_LOAD: begin
                 // Load instructions (LW, LH, LB, LHU, LBU)
-                // TODO: Implement
+                alu_op = `ALU_OP_ADD;  // Calculate address = rs1 + immediate
+                alu_src_imm = 1'b1;
+                mem_read = 1'b1;
+                reg_write = 1'b1;
             end
 
             `OPCODE_STORE: begin
                 // Store instructions (SW, SH, SB)
-                // TODO: Implement
+                alu_op = `ALU_OP_ADD;  // Calculate address = rs1 + immediate
+                alu_src_imm = 1'b1;
+                mem_write = 1'b1;
             end
 
             `OPCODE_BRANCH: begin
                 // Branch instructions (BEQ, BNE, BLT, BGE, BLTU, BGEU)
-                // TODO: Implement
+                alu_op = `ALU_OP_SUB;  // For comparison
+                is_branch = 1'b1;
             end
 
             `OPCODE_JAL: begin
-                // JAL (Jump and Link)
-                // TODO: Implement
+                // Jump and Link: rd = PC + 4, PC = PC + immediate
+                alu_op = `ALU_OP_ADD;
+                alu_src_imm = 1'b1;  // Use immediate for jump offset calculation
+                is_jump = 1'b1;
+                reg_write = 1'b1;
             end
 
             `OPCODE_JALR: begin
-                // JALR (Jump and Link Register)
-                // TODO: Implement
+                // Jump and Link Register: rd = PC + 4, PC = (rs1 + immediate) & ~1
+                alu_op = `ALU_OP_ADD;
+                alu_src_imm = 1'b1;
+                is_jump = 1'b1;
+                reg_write = 1'b1;
             end
 
             `OPCODE_LUI: begin
-                // LUI (Load Upper Immediate)
-                // TODO: Implement
+                // Load Upper Immediate: rd = immediate (already in upper 20 bits)
+                alu_op = `ALU_OP_ADD;  // Can use ADD with rs1=0
+                alu_src_imm = 1'b1;
+                reg_write = 1'b1;
             end
 
             `OPCODE_AUIPC: begin
-                // AUIPC (Add Upper Immediate to PC)
-                // TODO: Implement
+                // Add Upper Immediate to PC: rd = PC + immediate
+                alu_op = `ALU_OP_ADD;
+                alu_src_imm = 1'b1;
+                reg_write = 1'b1;
             end
 
             `OPCODE_SYSTEM: begin
@@ -215,61 +230,5 @@ module decoder (
             end
         endcase
     end
-
-    //==========================================================================
-    // IMPLEMENTATION HINTS
-    //==========================================================================
-
-    /**
-     * IMMEDIATE DECODING EXAMPLES:
-     *
-     * I-type:
-     *   immediate = {{20{instruction[31]}}, instruction[31:20]};
-     *
-     * S-type:
-     *   immediate = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-     *
-     * B-type:
-     *   immediate = {{19{instruction[31]}}, instruction[31], instruction[7],
-     *                instruction[30:25], instruction[11:8], 1'b0};
-     *
-     * U-type:
-     *   immediate = {instruction[31:12], 12'h0};
-     *
-     * J-type:
-     *   immediate = {{11{instruction[31]}}, instruction[31], instruction[19:12],
-     *                instruction[20], instruction[30:21], 1'b0};
-     */
-
-    /**
-     * CONTROL SIGNAL EXAMPLES:
-     *
-     * ADDI (I-type):
-     *   alu_op = `ALU_OP_ADD;
-     *   alu_src_imm = 1'b1;  // Use immediate
-     *   reg_write = 1'b1;    // Write to rd
-     *
-     * ADD (R-type):
-     *   alu_op = `ALU_OP_ADD;
-     *   alu_src_imm = 1'b0;  // Use rs2
-     *   reg_write = 1'b1;    // Write to rd
-     *
-     * LW (Load Word):
-     *   alu_op = `ALU_OP_ADD;  // Calculate address = rs1 + imm
-     *   alu_src_imm = 1'b1;
-     *   mem_read = 1'b1;
-     *   reg_write = 1'b1;
-     *
-     * SW (Store Word):
-     *   alu_op = `ALU_OP_ADD;  // Calculate address = rs1 + imm
-     *   alu_src_imm = 1'b1;
-     *   mem_write = 1'b1;
-     *   reg_write = 1'b0;  // Don't write to register
-     *
-     * BEQ (Branch if Equal):
-     *   alu_op = `ALU_OP_SUB;  // Compare by subtraction
-     *   is_branch = 1'b1;
-     *   reg_write = 1'b0;  // Branches don't write registers
-     */
 
 endmodule

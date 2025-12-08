@@ -13,7 +13,10 @@
       "Bash(tree:*)",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(cd:*)",
+      "Bash(vvp test_regfile:*)",
+      "Bash(iverilog:*)"
     ],
     "deny": [],
     "ask": []
