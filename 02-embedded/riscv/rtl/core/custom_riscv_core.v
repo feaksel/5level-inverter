@@ -134,11 +134,16 @@ module custom_riscv_core #(
     wire [31:0] alu_result;
     wire        alu_zero;
 
-    // Control signals
+    // Control signals from decoder
+    wire        alu_src_imm;      // ALU source: 0=rs2, 1=immediate
+    wire        mem_read;         // Memory read enable (loads)
+    wire        mem_write;        // Memory write enable (stores)
+    wire        reg_write;        // Register write enable
+    wire        is_branch;        // Is branch instruction
+    wire        is_jump;          // Is jump instruction
+    wire        is_system;        // Is system instruction
     wire        branch_taken;
     wire [31:0] branch_target;
-    wire        is_load, is_store;
-    wire        is_branch, is_jump;
 
     // State machine (for multi-cycle operations)
     reg [2:0] state;
@@ -148,123 +153,139 @@ module custom_riscv_core #(
     localparam STATE_MEM       = 3'd3;
     localparam STATE_WRITEBACK = 3'd4;
 
-    //==========================================================================
-    // PLACEHOLDER IMPLEMENTATION
-    //==========================================================================
+    reg [31:0] alu_result_reg;
 
-    /**
-     * This is a STARTER TEMPLATE for Native Wishbone implementation.
-     *
-     * RECOMMENDED IMPLEMENTATION ORDER:
-     *
-     * 1. Register File (simplest module)
-     *    - Create rtl/core/regfile.v
-     *    - 32 registers, x0 always 0
-     *    - Synchronous write, combinational read
-     *
-     * 2. ALU (pure combinational logic)
-     *    - Create rtl/core/alu.v
-     *    - Implement all RV32I operations
-     *    - Test with simple testbench
-     *
-     * 3. Instruction Decoder
-     *    - Create rtl/core/decoder.v
-     *    - Extract fields from instruction
-     *    - Generate control signals
-     *
-     * 4. Simple State Machine (this file)
-     *    - FETCH: Read instruction from iwb
-     *    - DECODE: Decode and read registers
-     *    - EXECUTE: Run ALU
-     *    - WRITEBACK: Write to register file
-     *
-     * 5. Load/Store Support
-     *    - Add MEM state for dwb access
-     *    - Handle byte/half/word accesses
-     *
-     * 6. Branches and Jumps
-     *    - Add branch comparison logic
-     *    - Update PC on taken branches
-     *
-     * 7. M Extension (Multiply/Divide)
-     *    - Create rtl/core/multiplier.v
-     *    - Create rtl/core/divider.v
-     *    - Add multi-cycle support
-     *
-     * 8. Interrupts and CSRs
-     *    - Create rtl/core/csr_file.v
-     *    - Implement trap handling
-     *    - Add mstatus, mie, mtvec, etc.
-     *
-     * 9. Zpec Custom Instructions
-     *    - Add custom instruction decoders
-     *    - Implement accelerators
-     *
-     * See docs/IMPLEMENTATION_ROADMAP.md for detailed code examples!
-     */
+    // Wishbone control
+    reg iwb_cyc_reg, iwb_stb_reg;
+    reg dwb_cyc_reg, dwb_stb_reg;
+    reg [31:0] dwb_adr_reg, dwb_dat_reg;
+    reg dwb_we_reg;
+    reg [3:0] dwb_sel_reg;
 
-    // For now, tie off outputs to prevent synthesis errors
-    assign iwb_adr_o = 32'h0;
-    assign iwb_cyc_o = 1'b0;
-    assign iwb_stb_o = 1'b0;
+    assign iwb_cyc_o = iwb_cyc_reg;
+    assign iwb_stb_o = iwb_stb_reg;
+    assign iwb_adr_o = pc;
 
-    assign dwb_adr_o = 32'h0;
-    assign dwb_dat_o = 32'h0;
-    assign dwb_we_o = 1'b0;
-    assign dwb_sel_o = 4'h0;
-    assign dwb_cyc_o = 1'b0;
-    assign dwb_stb_o = 1'b0;
+    assign dwb_cyc_o = dwb_cyc_reg;
+    assign dwb_stb_o = dwb_stb_reg;
+    assign dwb_adr_o = dwb_adr_reg;
+    assign dwb_dat_o = dwb_dat_reg;
+    assign dwb_we_o = dwb_we_reg;
+    assign dwb_sel_o = dwb_sel_reg;
+
+    assign alu_operand_a = (opcode == `OPCODE_AUIPC) ? pc : rs1_data;
+    assign alu_operand_b = alu_src_imm ? immediate : rs2_data;
+    assign rd_data = mem_read ? dwb_dat_i : alu_result_reg;
+    assign rd_wen = reg_write && (state == STATE_WRITEBACK) && !is_branch;
+
 
     // Initialize PC on reset
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             pc <= RESET_VECTOR;
             state <= STATE_FETCH;
+            iwb_cyc_reg <= 1'b0;
+            iwb_stb_reg <= 1'b0;
+            dwb_cyc_reg <= 1'b0;
+            dwb_stb_reg <= 1'b0;
         end else begin
-            // TODO: Implement state machine
-            // See implementation guide above
+            case (state)
+                STATE_FETCH: begin
+                    // Request instruction from memory
+                    iwb_cyc_reg <= 1'b1;
+                    iwb_stb_reg <= 1'b1;
+
+                    if (iwb_ack_i) begin
+                        instruction <= iwb_dat_i;
+                        iwb_cyc_reg <= 1'b0;
+                        iwb_stb_reg <= 1'b0;
+                        state <= STATE_DECODE;
+                    end
+                end
+
+                STATE_DECODE: begin
+                    // Decoder runs combinationally
+                    // Register file reads happen here
+                    state <= STATE_EXECUTE;
+                end
+
+                STATE_EXECUTE: begin
+                    // ALU operates
+                    alu_result_reg <= alu_result;
+
+                    if (mem_read || mem_write) begin
+                        state <= STATE_MEM;
+                    end else begin
+                        state <= STATE_WRITEBACK;
+                    end
+                end
+
+                STATE_MEM: begin
+                    if (mem_read || mem_write) begin
+                        dwb_cyc_reg <= 1'b1;
+                        dwb_stb_reg <= 1'b1;
+                        dwb_adr_reg <= alu_result_reg;  // Address from ALU
+                        dwb_we_reg <= mem_write;
+
+                        if (mem_write) begin
+                            dwb_dat_reg <= rs2_data;  // Data to store
+                            // Set byte enables based on funct3
+                            case (funct3)
+                                3'b000: dwb_sel_reg <= 4'b0001 << alu_result_reg[1:0];  // SB
+                                3'b001: dwb_sel_reg <= 4'b0011 << {alu_result_reg[1], 1'b0};  // SH
+                                3'b010: dwb_sel_reg <= 4'b1111;  // SW
+                                default: dwb_sel_reg <= 4'b1111;
+                            endcase
+                        end else begin
+                            dwb_sel_reg <= 4'b1111;  // Full word for loads
+                        end
+
+                        if (dwb_ack_i) begin
+                            dwb_cyc_reg <= 1'b0;
+                            dwb_stb_reg <= 1'b0;
+                            state <= STATE_WRITEBACK;
+                        end
+                    end else begin
+                        state <= STATE_WRITEBACK;
+                    end
+                end
+
+                STATE_WRITEBACK: begin
+                    // Register write happens via rd_wen signal (combinational)
+
+                    // Update PC
+                    if (is_jump) begin
+                        if (opcode == `OPCODE_JAL) begin
+                            pc <= pc + immediate;
+                        end else begin  // JALR
+                            pc <= (rs1_data + immediate) & ~32'h1;
+                        end
+                    end else if (is_branch) begin
+                        // Check branch condition based on funct3
+                        case (funct3)
+                            `FUNCT3_BEQ:  if (alu_zero) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BNE:  if (!alu_zero) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BLT:  if (alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BGE:  if (!alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BLTU: if (alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BGEU: if (!alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
+                            default: pc <= pc + 4;
+                        endcase
+                    end else begin
+                        pc <= pc + 4;
+                    end
+
+                    state <= STATE_FETCH;
+                end
+            endcase
+
         end
     end
 
-    // Synthesis-time warning
-    // synthesis translate_off
-    initial begin
-        $display("");
-        $display("=================================================================");
-        $display("INFO: custom_riscv_core - Approach 2 (Native Wishbone)");
-        $display("=================================================================");
-        $display("This template uses NATIVE WISHBONE interface.");
-        $display("");
-        $display("Advantages:");
-        $display("  - Standard protocol, widely used");
-        $display("  - Simpler wrapper (just passthrough)");
-        $display("  - More reusable design");
-        $display("  - Easier to understand");
-        $display("");
-        $display("Implementation guides:");
-        $display("  1. docs/DROP_IN_REPLACEMENT_GUIDE.md");
-        $display("     Section: 'Approach 2: Native Wishbone Core'");
-        $display("");
-        $display("  2. docs/IMPLEMENTATION_ROADMAP.md");
-        $display("     - Week-by-week implementation plan");
-        $display("     - Complete code examples for each module");
-        $display("");
-        $display("Quick Start:");
-        $display("  1. Implement regfile.v (register file)");
-        $display("  2. Implement alu.v (arithmetic logic unit)");
-        $display("  3. Implement decoder.v (instruction decoder)");
-        $display("  4. Build simple state machine in this file");
-        $display("  5. Test with simple programs!");
-        $display("=================================================================");
-        $display("");
-    end
-    // synthesis translate_on
-
     //==========================================================================
-    // MODULE INSTANTIATIONS (uncomment as you implement each module)
+    // MODULE INSTANTIATIONS
     //==========================================================================
-
-    /*
+    
     // Register File
     regfile regfile_inst (
         .clk(clk),
@@ -299,12 +320,16 @@ module custom_riscv_core #(
         .immediate(immediate),
         // Control signals
         .alu_op(alu_op),
-        .is_load(is_load),
-        .is_store(is_store),
+        .alu_src_imm(alu_src_imm),
+        .mem_read(mem_read),
+        .mem_write(mem_write),
+        .reg_write(reg_write),
         .is_branch(is_branch),
-        .is_jump(is_jump)
+        .is_jump(is_jump),
+        .is_system(is_system)
     );
 
+    /*
     // Branch Unit
     branch_unit branch_inst (
         .rs1_data(rs1_data),
@@ -342,6 +367,6 @@ module custom_riscv_core #(
         .interrupt_taken(interrupt_taken),
         .trap_vector(trap_vector)
     );
+    
     */
-
 endmodule

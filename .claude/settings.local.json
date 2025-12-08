@@ -16,7 +16,10 @@
       "Bash(git config:*)",
       "Bash(cd:*)",
       "Bash(vvp test_regfile:*)",
-      "Bash(iverilog:*)"
+      "Bash(iverilog:*)",
+      "Bash(vvp test_core:*)",
+      "Bash(vvp test_core_comprehensive:*)",
+      "Bash(vvp test_shifts_debug:*)"
     ],
     "deny": [],
     "ask": []
