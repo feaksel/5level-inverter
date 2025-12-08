@@ -21,6 +21,7 @@ module decoder (
     output reg         is_branch,    // Is branch instruction
     output reg         is_jump,      // Is jump instruction (JAL/JALR)
     output reg         is_system     // Is system instruction (ECALL, etc.)
+    ,output reg        is_m          // Is M-extension (multiply/divide)
 );
 
     //==========================================================================
@@ -134,6 +135,7 @@ module decoder (
         is_branch = 1'b0;
         is_jump = 1'b0;
         is_system = 1'b0;
+        is_m = 1'b0;
 
         case (opcode)
             `OPCODE_OP_IMM: begin
@@ -157,16 +159,32 @@ module decoder (
                 // R-type arithmetic (ADD, SUB, AND, OR, etc.)
                 alu_src_imm = 1'b0;  // Use rs2
                 reg_write = 1'b1;
-                case (funct3)
-                    `FUNCT3_ADD_SUB: alu_op = funct7[5] ? `ALU_OP_SUB : `ALU_OP_ADD;  // ADD/SUB
-                    `FUNCT3_SLL:     alu_op = `ALU_OP_SLL;
-                    `FUNCT3_SLT:     alu_op = `ALU_OP_SLT;
-                    `FUNCT3_SLTU:    alu_op = `ALU_OP_SLTU;
-                    `FUNCT3_XOR:     alu_op = `ALU_OP_XOR;
-                    `FUNCT3_SRL_SRA: alu_op = funct7[5] ? `ALU_OP_SRA : `ALU_OP_SRL;
-                    `FUNCT3_OR:      alu_op = `ALU_OP_OR;
-                    `FUNCT3_AND:     alu_op = `ALU_OP_AND;
-                endcase
+                // Check M-extension first (funct7 == `FUNCT7_MUL_DIV)
+                if (funct7 == `FUNCT7_MUL_DIV) begin
+                    is_m = 1'b1;
+                    case (funct3)
+                        `FUNCT3_MUL:    alu_op = `ALU_OP_MUL;
+                        `FUNCT3_MULH:   alu_op = `ALU_OP_MULH;
+                        `FUNCT3_MULHSU: alu_op = `ALU_OP_MULHSU;
+                        `FUNCT3_MULHU:  alu_op = `ALU_OP_MULHU;
+                        `FUNCT3_DIV:    alu_op = `ALU_OP_DIV;
+                        `FUNCT3_DIVU:   alu_op = `ALU_OP_DIVU;
+                        `FUNCT3_REM:    alu_op = `ALU_OP_DIV;  // REM uses DIV hardware, core selects remainder
+                        `FUNCT3_REMU:   alu_op = `ALU_OP_DIVU; // REMU uses DIVU hardware
+                        default:        alu_op = `ALU_OP_ADD;
+                    endcase
+                end else begin
+                    case (funct3)
+                        `FUNCT3_ADD_SUB: alu_op = funct7[5] ? `ALU_OP_SUB : `ALU_OP_ADD;  // ADD/SUB
+                        `FUNCT3_SLL:     alu_op = `ALU_OP_SLL;
+                        `FUNCT3_SLT:     alu_op = `ALU_OP_SLT;
+                        `FUNCT3_SLTU:    alu_op = `ALU_OP_SLTU;
+                        `FUNCT3_XOR:     alu_op = `ALU_OP_XOR;
+                        `FUNCT3_SRL_SRA: alu_op = funct7[5] ? `ALU_OP_SRA : `ALU_OP_SRL;
+                        `FUNCT3_OR:      alu_op = `ALU_OP_OR;
+                        `FUNCT3_AND:     alu_op = `ALU_OP_AND;
+                    endcase
+                end
             end
 
             `OPCODE_LOAD: begin

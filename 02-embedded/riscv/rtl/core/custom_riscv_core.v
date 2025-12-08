@@ -133,6 +133,8 @@ module custom_riscv_core #(
     wire [3:0]  alu_op;
     wire [31:0] alu_result;
     wire        alu_zero;
+    // M-extension signal from decoder
+    wire        is_m;
 
     // Control signals from decoder
     wire        alu_src_imm;      // ALU source: 0=rs2, 1=immediate
@@ -152,8 +154,19 @@ module custom_riscv_core #(
     localparam STATE_EXECUTE   = 3'd2;
     localparam STATE_MEM       = 3'd3;
     localparam STATE_WRITEBACK = 3'd4;
+    localparam STATE_MULDIV    = 3'd5;
 
     reg [31:0] alu_result_reg;
+    // M-extension control and results
+    reg         mdu_start;
+    wire        mdu_busy;
+    wire        mdu_done;
+    wire [63:0] mdu_product;
+    wire [31:0] mdu_quotient;
+    wire [31:0] mdu_remainder;
+
+    // temporary register to capture result from MDU
+    reg [31:0]  mdu_result_reg;
 
     // Wishbone control
     reg iwb_cyc_reg, iwb_stb_reg;
@@ -188,6 +201,8 @@ module custom_riscv_core #(
             iwb_stb_reg <= 1'b0;
             dwb_cyc_reg <= 1'b0;
             dwb_stb_reg <= 1'b0;
+            mdu_start <= 1'b0;
+            mdu_result_reg <= 32'd0;
         end else begin
             case (state)
                 STATE_FETCH: begin
@@ -211,12 +226,46 @@ module custom_riscv_core #(
 
                 STATE_EXECUTE: begin
                     // ALU operates
-                    alu_result_reg <= alu_result;
-
-                    if (mem_read || mem_write) begin
-                        state <= STATE_MEM;
+                    if (is_m) begin
+                        // Start multiply/divide unit based on funct3
+                        // Start pulse lasts one cycle
+                        // Start unified MDU
+                        mdu_start <= 1'b1;
+                        state <= STATE_MULDIV;
                     end else begin
+                        alu_result_reg <= alu_result;
+
+                        if (mem_read || mem_write) begin
+                            state <= STATE_MEM;
+                        end else begin
+                            state <= STATE_WRITEBACK;
+                        end
+                    end
+                end
+
+                STATE_MULDIV: begin
+                    // Clear one-cycle start pulse
+                    mdu_start <= 1'b0;
+
+                    // Wait for MDU completion
+                    if (mdu_done) begin
+                        // If multiply variants -> select product high/low; else select quotient/remainder
+                        case (funct3)
+                            `FUNCT3_MUL:    mdu_result_reg <= mdu_product[31:0];
+                            `FUNCT3_MULH:   mdu_result_reg <= mdu_product[63:32];
+                            `FUNCT3_MULHSU: mdu_result_reg <= mdu_product[63:32];
+                            `FUNCT3_MULHU:  mdu_result_reg <= mdu_product[63:32];
+                            `FUNCT3_DIV:    mdu_result_reg <= mdu_quotient;
+                            `FUNCT3_DIVU:   mdu_result_reg <= mdu_quotient;
+                            `FUNCT3_REM:    mdu_result_reg <= mdu_remainder;
+                            `FUNCT3_REMU:   mdu_result_reg <= mdu_remainder;
+                            default:        mdu_result_reg <= mdu_product[31:0];
+                        endcase
+                        alu_result_reg <= mdu_result_reg;
                         state <= STATE_WRITEBACK;
+                    end else begin
+                        // remain in MULDIV until unit signals done
+                        state <= STATE_MULDIV;
                     end
                 end
 
@@ -326,34 +375,11 @@ module custom_riscv_core #(
         .reg_write(reg_write),
         .is_branch(is_branch),
         .is_jump(is_jump),
-        .is_system(is_system)
+        .is_system(is_system),
+        .is_m(is_m)
     );
 
     /*
-    // Branch Unit
-    branch_unit branch_inst (
-        .rs1_data(rs1_data),
-        .rs2_data(rs2_data),
-        .funct3(funct3),
-        .is_branch(is_branch),
-        .is_jump(is_jump),
-        .pc(pc),
-        .immediate(immediate),
-        .branch_taken(branch_taken),
-        .branch_target(branch_target)
-    );
-
-    // Multiply/Divide Unit (M extension)
-    mul_div mul_div_inst (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(mul_div_start),
-        .funct3(funct3),
-        .operand_a(rs1_data),
-        .operand_b(rs2_data),
-        .result(mul_div_result),
-        .done(mul_div_done)
-    );
 
     // CSR File (for interrupts and system instructions)
     csr_file csr_inst (
@@ -369,4 +395,19 @@ module custom_riscv_core #(
     );
     
     */
+
+    // Unified MDU instance (handles MUL/MULH/MULHSU/MULHU and DIV/DIVU/REM/REMU)
+    mdu mdu_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .start(mdu_start),
+        .funct3(funct3),
+        .a(rs1_data),
+        .b(rs2_data),
+        .busy(mdu_busy),
+        .done(mdu_done),
+        .product(mdu_product),
+        .quotient(mdu_quotient),
+        .remainder(mdu_remainder)
+    );
 endmodule

@@ -24,6 +24,9 @@ always @(*) begin
         `ALU_OP_SRA:  result = $signed(operand_a) >>> operand_b[4:0];
         `ALU_OP_SLT:  result = ($signed(operand_a) < $signed(operand_b)) ? 32'd1 : 32'd0;
         `ALU_OP_SLTU: result = (operand_a < operand_b) ? 32'd1 : 32'd0;
+
+        
+
         default:      result = 32'hXXXXXXXX;
     endcase
 end
