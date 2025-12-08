@@ -226,7 +226,13 @@
 `define ALU_OP_SLTU       4'b1001
 `define ALU_OP_PASS_A     4'b1010  // Pass operand A (for LUI, AUIPC)
 `define ALU_OP_PASS_B     4'b1011  // Pass operand B
-
+// (M Extension):
+`define ALU_OP_MUL    4'd10  // Multiply (lower 32 bits)
+`define ALU_OP_MULH   4'd11  // Multiply signed (upper 32 bits)
+`define ALU_OP_MULHSU 4'd12  // Multiply signed×unsigned (upper 32 bits)
+`define ALU_OP_MULHU  4'd13  // Multiply unsigned (upper 32 bits)
+`define ALU_OP_DIV    4'd14  // Divide signed
+`define ALU_OP_DIVU   4'd15  // Divide unsigned
 //==========================================================================
 // Memory Access Widths
 //==========================================================================
