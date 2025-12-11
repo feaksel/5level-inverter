@@ -20,7 +20,8 @@
       "Bash(vvp test_core:*)",
       "Bash(vvp test_core_comprehensive:*)",
       "Bash(vvp test_shifts_debug:*)",
-      "Bash(/opt/riscv/bin/riscv32-unknown-elf-objdump:*)"
+      "Bash(/opt/riscv/bin/riscv32-unknown-elf-objdump:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

@@ -155,6 +155,7 @@ module custom_riscv_core #(
     localparam STATE_MEM       = 3'd3;
     localparam STATE_WRITEBACK = 3'd4;
     localparam STATE_MULDIV    = 3'd5;
+    localparam STATE_TRAP    = 3'd6; 
 
     reg [31:0] alu_result_reg;
     // M-extension control and results
@@ -167,6 +168,51 @@ module custom_riscv_core #(
 
     // temporary register to capture result from MDU
     reg [31:0]  mdu_result_reg;
+
+    //==========================================================================
+    // CSR and Trap Handling Signals
+    //==========================================================================
+
+    // CSR interface signals
+    wire [11:0] csr_addr;
+    wire [31:0] csr_wdata;
+    wire [2:0]  csr_op;
+    wire [31:0] csr_rdata;
+    wire        csr_valid;
+
+    // Trap handling signals
+    reg         trap_entry;
+    reg         trap_return;
+    reg  [31:0] trap_pc;
+    reg  [31:0] trap_cause;
+    reg  [31:0] trap_val;
+    wire [31:0] trap_vector;
+    wire [31:0] epc_out;
+
+    // Interrupt signals (from CSR unit)
+    wire        interrupt_pending;
+    wire        interrupt_enabled;
+    wire [31:0] interrupt_cause;
+
+    // interrupt_req is just interrupt_pending (CSR unit handles enable checking)
+    wire        interrupt_req = interrupt_pending;
+
+    // Exception signals
+    wire        exception_taken;
+    wire [31:0] exception_cause;
+    wire [31:0] exception_val;
+
+    // System instruction decoding
+    wire        is_mret;
+    wire        is_ecall;
+    wire        is_ebreak;
+    wire        illegal_instr;
+
+    // Stall signal (not used yet but referenced)
+    wire        stall = 1'b0;
+
+    // Instruction retired signal for performance counters
+    wire        instr_retired;
 
     // Wishbone control
     reg iwb_cyc_reg, iwb_stb_reg;
@@ -188,8 +234,21 @@ module custom_riscv_core #(
 
     assign alu_operand_a = (opcode == `OPCODE_AUIPC) ? pc : rs1_data;
     assign alu_operand_b = alu_src_imm ? immediate : rs2_data;
-    assign rd_data = mem_read ? dwb_dat_i : alu_result_reg;
+    assign rd_data = mem_read ? dwb_dat_i :
+                     is_system ? csr_rdata :
+                     is_jump ? (pc + 4) :      // Return address for JAL/JALR
+                     alu_result_reg;
     assign rd_wen = reg_write && (state == STATE_WRITEBACK) && !is_branch;
+
+    // CSR operation decoding
+    assign csr_addr = instruction[31:20];
+    assign csr_wdata = (funct3[2]) ? {27'b0, instruction[19:15]} : rs1_data;  // Immediate or register
+    assign csr_op = (is_system && !is_mret && !is_ecall && !is_ebreak) ? funct3 : 3'b000;
+
+    // Instruction retired when we complete writeback
+    assign instr_retired = (state == STATE_WRITEBACK);
+
+    // Note: is_mret, is_ecall, is_ebreak, illegal_instr now come from decoder
 
 
     // Initialize PC on reset
@@ -203,9 +262,25 @@ module custom_riscv_core #(
             dwb_stb_reg <= 1'b0;
             mdu_start <= 1'b0;
             mdu_result_reg <= 32'd0;
+            trap_entry <= 1'b0;
+            trap_return <= 1'b0;
+            trap_pc <= 32'h0;
+            trap_cause <= 32'h0;
+            trap_val <= 32'h0;
         end else begin
             case (state)
                 STATE_FETCH: begin
+                // Clear trap_return flag if it was set
+                trap_return <= 1'b0;
+
+                if (interrupt_req && !stall) begin
+                    trap_entry <= 1'b1;
+                    trap_pc <= pc;
+                    trap_cause <= interrupt_cause;
+                    trap_val <= 32'h0;
+                    state <= STATE_TRAP;
+                end else begin
+
                     // Request instruction from memory
                     iwb_cyc_reg <= 1'b1;
                     iwb_stb_reg <= 1'b1;
@@ -218,6 +293,8 @@ module custom_riscv_core #(
                     end
                 end
 
+        end
+
                 STATE_DECODE: begin
                     // Decoder runs combinationally
                     // Register file reads happen here
@@ -225,6 +302,21 @@ module custom_riscv_core #(
                 end
 
                 STATE_EXECUTE: begin
+
+                // Check for exceptions
+                if (exception_taken) begin
+                    trap_entry <= 1'b1;
+                    trap_pc <= pc;
+                    trap_cause <= exception_cause;
+                    trap_val <= exception_val;
+                    state <= STATE_TRAP;
+                end else if (is_mret) begin
+                    // Return from trap - restore PC and state
+                    pc <= epc_out;
+                    trap_return <= 1'b1;
+                    state <= STATE_FETCH;
+                end else begin
+
                     // ALU operates
                     if (is_m) begin
                         // Start multiply/divide unit based on funct3
@@ -242,6 +334,15 @@ module custom_riscv_core #(
                         end
                     end
                 end
+
+                end
+
+                STATE_TRAP: begin
+                // Jump to trap handler
+                pc <= trap_vector;
+                trap_entry <= 1'b0;
+                state <= STATE_FETCH;
+            end
 
                 STATE_MULDIV: begin
                     // Clear one-cycle start pulse
@@ -376,25 +477,68 @@ module custom_riscv_core #(
         .is_branch(is_branch),
         .is_jump(is_jump),
         .is_system(is_system),
-        .is_m(is_m)
+        .is_m(is_m),
+        // System instruction decode
+        .is_ecall(is_ecall),
+        .is_ebreak(is_ebreak),
+        .is_mret(is_mret),
+        .is_wfi(),  // Not used yet
+        .illegal_instr(illegal_instr)
     );
 
-    /*
+    //==========================================================================
+    // CSR Unit - Control and Status Registers
+    //==========================================================================
 
-    // CSR File (for interrupts and system instructions)
-    csr_file csr_inst (
+    csr_unit csr_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .csr_addr(instruction[31:20]),
-        .csr_wdata(rs1_data),
+
+        // CSR Read/Write Interface
+        .csr_addr(csr_addr),
+        .csr_wdata(csr_wdata),
+        .csr_op(csr_op),
         .csr_rdata(csr_rdata),
-        .csr_we(csr_we),
-        .interrupts(interrupts),
-        .interrupt_taken(interrupt_taken),
-        .trap_vector(trap_vector)
+        .csr_valid(csr_valid),
+
+        // Trap Interface
+        .trap_entry(trap_entry),
+        .trap_return(trap_return),
+        .trap_pc(trap_pc),
+        .trap_cause(trap_cause),
+        .trap_val(trap_val),
+        .trap_vector(trap_vector),
+        .epc_out(epc_out),
+
+        // Interrupt Interface
+        .interrupts_i(interrupts),
+        .interrupt_pending(interrupt_pending),
+        .interrupt_enabled(interrupt_enabled),
+        .interrupt_cause(interrupt_cause),
+
+        // Performance Counters
+        .instr_retired(instr_retired)
     );
-    
-    */
+
+    //==========================================================================
+    // Exception Unit - Exception detection and prioritization
+    //==========================================================================
+
+    exception_unit exc_unit (
+        .pc(pc),
+        .instruction(instruction),
+        .mem_addr(dwb_adr_reg),
+        .mem_read(mem_read),
+        .mem_write(mem_write),
+        .bus_error(dwb_err_i),
+        .illegal_instr(illegal_instr),
+        .ecall(is_ecall),
+        .ebreak(is_ebreak),
+
+        .exception_taken(exception_taken),
+        .exception_cause(exception_cause),
+        .exception_val(exception_val)
+    );
 
     // Unified MDU instance (handles MUL/MULH/MULHSU/MULHU and DIV/DIVU/REM/REMU)
     mdu mdu_inst (

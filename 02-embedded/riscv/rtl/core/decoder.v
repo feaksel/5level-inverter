@@ -20,8 +20,15 @@ module decoder (
     output reg         reg_write,    // Register write enable
     output reg         is_branch,    // Is branch instruction
     output reg         is_jump,      // Is jump instruction (JAL/JALR)
-    output reg         is_system     // Is system instruction (ECALL, etc.)
-    ,output reg        is_m          // Is M-extension (multiply/divide)
+    output reg         is_system,    // Is system instruction (ECALL, CSR, etc.)
+    output reg         is_m,         // Is M-extension (multiply/divide)
+
+    // System instruction decode outputs
+    output reg         is_ecall,     // ECALL instruction
+    output reg         is_ebreak,    // EBREAK instruction
+    output reg         is_mret,      // MRET instruction
+    output reg         is_wfi,       // WFI instruction
+    output reg         illegal_instr // Illegal instruction detected
 );
 
     //==========================================================================
@@ -136,6 +143,11 @@ module decoder (
         is_jump = 1'b0;
         is_system = 1'b0;
         is_m = 1'b0;
+        is_ecall = 1'b0;
+        is_ebreak = 1'b0;
+        is_mret = 1'b0;
+        is_wfi = 1'b0;
+        illegal_instr = 1'b0;
 
         case (opcode)
             `OPCODE_OP_IMM: begin
@@ -239,12 +251,51 @@ module decoder (
             end
 
             `OPCODE_SYSTEM: begin
-                // System instructions (ECALL, EBREAK, CSR*)
-                // TODO: Implement
+                is_system = 1'b1;
+                case (funct3)
+                    3'b000: begin  // PRIV instructions (ECALL, EBREAK, MRET, WFI)
+                        // Check funct12 (instruction[31:20])
+                        case (instruction[31:20])
+                            12'h000: begin  // ECALL
+                                is_ecall = 1'b1;
+                            end
+                            12'h001: begin  // EBREAK
+                                is_ebreak = 1'b1;
+                            end
+                            12'h302: begin  // MRET
+                                is_mret = 1'b1;
+                            end
+                            12'h105: begin  // WFI
+                                is_wfi = 1'b1;
+                            end
+                            default: begin
+                                illegal_instr = 1'b1;
+                            end
+                        endcase
+                    end
+
+                    // CSR instructions (CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI)
+                    3'b001, 3'b010, 3'b011, 3'b101, 3'b110, 3'b111: begin
+                        // CSR instructions - all write to rd (if rd != x0)
+                        reg_write = (instruction[11:7] != 5'b0);
+                    end
+
+                    default: begin
+                        illegal_instr = 1'b1;
+                    end
+                endcase
+            end
+
+            `OPCODE_MISC_MEM: begin
+                // FENCE, FENCE.I instructions
+                // For a single-core implementation without caches, these are NOPs
+                // Just advance PC, no register write
+                reg_write = 1'b0;
             end
 
             default: begin
-                // Invalid opcode - do nothing
+                // Invalid opcode
+                illegal_instr = 1'b1;
             end
         endcase
     end

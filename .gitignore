@@ -99,6 +99,9 @@ usage_statistics_webtalk.xml
 *.dump
 *.dis
 
+# RISC-V compliance test suite (cloned from external repo)
+02-embedded/riscv/riscv-tests/
+
 # Keep important firmware hex files but ignore temporary ones
 # (Uncomment if you want to keep specific .hex/.bin files in version control)
 # !firmware/firmware.hex
