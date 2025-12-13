@@ -60,11 +60,29 @@ def convert_elf_to_hex(elf_file, hex_file):
 
 def get_test_info(elf_file):
     """Extract test information from ELF file"""
-    # For compliance tests, tohost is always at offset 0x1000 from base
-    # When converted to binary and loaded at address 0, tohost is at word address 0x400 (1024)
-    return {
-        'tohost_word_offset': 0x400  # 0x1000 bytes / 4 = 0x400 words
-    }
+    try:
+        # Use nm to get tohost symbol address
+        result = subprocess.run(
+            [f"{OBJCOPY.replace('objcopy', 'nm')}", str(elf_file)],
+            capture_output=True, text=True, check=True
+        )
+
+        # Parse nm output to find tohost
+        for line in result.stdout.splitlines():
+            if 'tohost' in line and not 'write_tohost' in line:
+                parts = line.split()
+                if len(parts) >= 1:
+                    addr = int(parts[0], 16)
+                    # Subtract base address (0x80000000) to get offset
+                    offset = addr - 0x80000000
+                    # Convert to word address
+                    word_offset = offset // 4
+                    return {'tohost_word_offset': word_offset}
+
+        # Fallback to 0x1000 if not found
+        return {'tohost_word_offset': 0x400}
+    except:
+        return {'tohost_word_offset': 0x400}
 
 def create_testbench(test_name, hex_file, test_info):
     """Create Verilog testbench for compliance test"""
@@ -90,8 +108,9 @@ module tb_compliance_{verilog_name};
     wire dwb_err_i = 0;
     reg [31:0] interrupts = 0;
 
-    reg [31:0] imem [0:8191];  // 32KB instruction memory
-    reg [31:0] dmem [0:8191];  // 32KB data memory
+    // UNIFIED MEMORY - Single array for both instruction and data access
+    // This enables self-modifying code and FENCE.I support
+    reg [31:0] mem [0:8191];  // 32KB unified memory
     reg imem_ack, dmem_ack;
     reg [31:0] imem_data, dmem_data;
 
@@ -108,14 +127,14 @@ module tb_compliance_{verilog_name};
         .dwb_err_i(dwb_err_i), .interrupts(interrupts)
     );
 
-    // Instruction memory
+    // Instruction fetch from unified memory
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             imem_ack <= 0;
             imem_data <= 32'h00000013;
         end else begin
             if (iwb_stb_o && iwb_cyc_o && !imem_ack) begin
-                imem_data <= imem[iwb_adr_o[14:2]];
+                imem_data <= mem[iwb_adr_o[14:2]];  // Read from unified memory
                 imem_ack <= 1;
             end else begin
                 imem_ack <= 0;
@@ -123,16 +142,16 @@ module tb_compliance_{verilog_name};
         end
     end
 
-    // Data memory - combinational read (Wishbone requires data valid same cycle as ACK)
+    // Data read - combinational (Wishbone requires data valid same cycle as ACK)
     always @(*) begin
         if (dwb_stb_o && dwb_cyc_o) begin
-            dmem_data = dmem[dwb_adr_o[14:2]];
+            dmem_data = mem[dwb_adr_o[14:2]];  // Read from unified memory
         end else begin
             dmem_data = 32'h0;
         end
     end
 
-    // Data memory write and tohost monitoring
+    // Data write and tohost monitoring
     reg [31:0] tohost = 0;
     reg [31:0] newv;
     always @(posedge clk or negedge rst_n) begin
@@ -143,12 +162,12 @@ module tb_compliance_{verilog_name};
             if (dwb_stb_o && dwb_cyc_o && !dmem_ack) begin
                 if (dwb_we_o) begin
                     // Masked write: apply dwb_sel_o to update only selected bytes
-                    newv = dmem[dwb_adr_o[14:2]];
+                    newv = mem[dwb_adr_o[14:2]];
                     if (dwb_sel_o[0]) newv[7:0]   = dwb_dat_o[7:0];
                     if (dwb_sel_o[1]) newv[15:8]  = dwb_dat_o[15:8];
                     if (dwb_sel_o[2]) newv[23:16] = dwb_dat_o[23:16];
                     if (dwb_sel_o[3]) newv[31:24] = dwb_dat_o[31:24];
-                    dmem[dwb_adr_o[14:2]] <= newv;
+                    mem[dwb_adr_o[14:2]] <= newv;  // Write to unified memory
                     // Monitor tohost writes
                     if (dwb_adr_o[14:2] == {tohost_offset}) begin
                         tohost <= dwb_dat_o;
@@ -175,16 +194,14 @@ module tb_compliance_{verilog_name};
         rst_n = 0;
         interrupts = 32'h0;
 
-        // Initialize memories
+        // Initialize unified memory
         for (i = 0; i < 8192; i = i + 1) begin
-            imem[i] = 32'h00000013;  // NOP
-            dmem[i] = 32'h00000000;
+            mem[i] = 32'h00000013;  // NOP
         end
 
-        // Load test program into both instruction and data memory
+        // Load test program into unified memory
         // (RISC-V tests use unified memory with code and data in same binary)
-        $readmemh("{hex_file.name}", imem);
-        $readmemh("{hex_file.name}", dmem);
+        $readmemh("{hex_file.name}", mem);
 
         #20 rst_n = 1;
 

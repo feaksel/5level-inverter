@@ -257,9 +257,14 @@ module custom_riscv_core #(
                        (load_addr_offset == 2'b10) ? mem_data_reg[23:16] :
                                                        mem_data_reg[31:24];
 
-    // Select halfword based on address offset
-    assign load_halfword = (load_addr_offset[1] == 1'b0) ? mem_data_reg[15:0] :
-                                                             mem_data_reg[31:16];
+    // Select halfword based on address offset (supports misaligned halfword access)
+    // offset 00: bytes [1:0] = mem_data_reg[15:0]
+    // offset 01: bytes [2:1] = mem_data_reg[23:8]
+    // offset 10: bytes [3:2] = mem_data_reg[31:16]
+    // offset 11: Would need next word's byte 0 - not supported, just use upper halfword
+    assign load_halfword = (load_addr_offset == 2'b00) ? mem_data_reg[15:0] :
+                           (load_addr_offset == 2'b01) ? mem_data_reg[23:8] :
+                                                          mem_data_reg[31:16];
 
     // Determine sign bit for sign extension
     assign load_sign_bit = (funct3 == `FUNCT3_LB)  ? load_byte[7] :

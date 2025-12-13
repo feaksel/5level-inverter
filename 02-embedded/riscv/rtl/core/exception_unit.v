@@ -45,11 +45,8 @@ module exception_unit (
             exception_cause = `MCAUSE_BREAKPOINT;
             exception_val = pc;
 
-        // 5. Load address misaligned -> check width-specific alignment rules
+        // 5. Load address misaligned
         end else if (mem_read) begin
-            // LB/LBU: no requirement
-            // LH/LHU: mem_addr[0] must be 0
-            // LW: mem_addr[1:0] must be 00
             if ((funct3 == `FUNCT3_LH || funct3 == `FUNCT3_LHU) && (mem_addr[0] != 1'b0)) begin
                 exception_taken = 1'b1;
                 exception_cause = `MCAUSE_LOAD_MISALIGN;
@@ -59,17 +56,13 @@ module exception_unit (
                 exception_cause = `MCAUSE_LOAD_MISALIGN;
                 exception_val = mem_addr;
             end else if (bus_error) begin
-                // Load access fault
                 exception_taken = 1'b1;
                 exception_cause = `MCAUSE_LOAD_ACCESS_FAULT;
                 exception_val = mem_addr;
             end
 
-        // 6. Store address misaligned / access fault -> check width-specific alignment
+        // 6. Store address misaligned
         end else if (mem_write) begin
-            // SB: any address ok
-            // SH: mem_addr[0] == 0
-            // SW: mem_addr[1:0] == 00
             if ((funct3 == `FUNCT3_SH) && (mem_addr[0] != 1'b0)) begin
                 exception_taken = 1'b1;
                 exception_cause = `MCAUSE_STORE_MISALIGN;
