@@ -3,6 +3,7 @@
 module exception_unit (
     input  wire [31:0] pc,              // Current PC
     input  wire [31:0] instruction,     // Current instruction
+    input  wire [2:0]  funct3,          // Access width for mem ops (from decoder)
     input  wire [31:0] mem_addr,        // Memory address (for load/store)
     input  wire        mem_read,        // Is load instruction
     input  wire        mem_write,       // Is store instruction
@@ -44,12 +45,16 @@ module exception_unit (
             exception_cause = `MCAUSE_BREAKPOINT;
             exception_val = pc;
 
-        // 5. Load address misaligned
+        // 5. Load address misaligned -> check width-specific alignment rules
         end else if (mem_read) begin
-            // Check alignment based on access width
-            // (This should be determined by funct3 of the load instruction)
-            // For simplicity, we'll check word alignment here
-            if (mem_addr[1:0] != 2'b00) begin
+            // LB/LBU: no requirement
+            // LH/LHU: mem_addr[0] must be 0
+            // LW: mem_addr[1:0] must be 00
+            if ((funct3 == `FUNCT3_LH || funct3 == `FUNCT3_LHU) && (mem_addr[0] != 1'b0)) begin
+                exception_taken = 1'b1;
+                exception_cause = `MCAUSE_LOAD_MISALIGN;
+                exception_val = mem_addr;
+            end else if ((funct3 == `FUNCT3_LW) && (mem_addr[1:0] != 2'b00)) begin
                 exception_taken = 1'b1;
                 exception_cause = `MCAUSE_LOAD_MISALIGN;
                 exception_val = mem_addr;
@@ -60,9 +65,16 @@ module exception_unit (
                 exception_val = mem_addr;
             end
 
-        // 6. Store address misaligned / access fault
+        // 6. Store address misaligned / access fault -> check width-specific alignment
         end else if (mem_write) begin
-            if (mem_addr[1:0] != 2'b00) begin
+            // SB: any address ok
+            // SH: mem_addr[0] == 0
+            // SW: mem_addr[1:0] == 00
+            if ((funct3 == `FUNCT3_SH) && (mem_addr[0] != 1'b0)) begin
+                exception_taken = 1'b1;
+                exception_cause = `MCAUSE_STORE_MISALIGN;
+                exception_val = mem_addr;
+            end else if ((funct3 == `FUNCT3_SW) && (mem_addr[1:0] != 2'b00)) begin
                 exception_taken = 1'b1;
                 exception_cause = `MCAUSE_STORE_MISALIGN;
                 exception_val = mem_addr;

@@ -12,8 +12,8 @@ from pathlib import Path
 
 # Paths
 RISCV_TESTS_DIR = Path("riscv-tests/isa")
-SIM_DIR = Path("sim")
-TESTBENCH_DIR = SIM_DIR / "testbench"
+COMPLIANCE_DIR = Path("riscv-tests")
+TESTBENCH_DIR = COMPLIANCE_DIR / "testbenches"
 RTL_DIR = Path("rtl/core")
 
 # Toolchain
@@ -25,6 +25,9 @@ VVP = "vvp"
 def convert_elf_to_hex(elf_file, hex_file):
     """Convert ELF file to hex format suitable for Verilog $readmemh"""
     try:
+        # Ensure output directory exists
+        hex_file.parent.mkdir(parents=True, exist_ok=True)
+
         # Convert to binary
         bin_file = hex_file.with_suffix('.bin')
         subprocess.run([
@@ -120,17 +123,32 @@ module tb_compliance_{verilog_name};
         end
     end
 
-    // Data memory with tohost monitoring
+    // Data memory - combinational read (Wishbone requires data valid same cycle as ACK)
+    always @(*) begin
+        if (dwb_stb_o && dwb_cyc_o) begin
+            dmem_data = dmem[dwb_adr_o[14:2]];
+        end else begin
+            dmem_data = 32'h0;
+        end
+    end
+
+    // Data memory write and tohost monitoring
     reg [31:0] tohost = 0;
+    reg [31:0] newv;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             dmem_ack <= 0;
-            dmem_data <= 32'h0;
             tohost <= 0;
         end else begin
             if (dwb_stb_o && dwb_cyc_o && !dmem_ack) begin
                 if (dwb_we_o) begin
-                    dmem[dwb_adr_o[14:2]] <= dwb_dat_o;
+                    // Masked write: apply dwb_sel_o to update only selected bytes
+                    newv = dmem[dwb_adr_o[14:2]];
+                    if (dwb_sel_o[0]) newv[7:0]   = dwb_dat_o[7:0];
+                    if (dwb_sel_o[1]) newv[15:8]  = dwb_dat_o[15:8];
+                    if (dwb_sel_o[2]) newv[23:16] = dwb_dat_o[23:16];
+                    if (dwb_sel_o[3]) newv[31:24] = dwb_dat_o[31:24];
+                    dmem[dwb_adr_o[14:2]] <= newv;
                     // Monitor tohost writes
                     if (dwb_adr_o[14:2] == {tohost_offset}) begin
                         tohost <= dwb_dat_o;
@@ -145,7 +163,6 @@ module tb_compliance_{verilog_name};
                         end
                     end
                 end
-                dmem_data <= dmem[dwb_adr_o[14:2]];
                 dmem_ack <= 1;
             end else begin
                 dmem_ack <= 0;
@@ -164,8 +181,10 @@ module tb_compliance_{verilog_name};
             dmem[i] = 32'h00000000;
         end
 
-        // Load test program
+        // Load test program into both instruction and data memory
+        // (RISC-V tests use unified memory with code and data in same binary)
         $readmemh("{hex_file.name}", imem);
+        $readmemh("{hex_file.name}", dmem);
 
         #20 rst_n = 1;
 
@@ -175,12 +194,21 @@ module tb_compliance_{verilog_name};
         $finish;
     end
 
-    // Optional: Trace execution for debugging
-    // always @(posedge clk) begin
-    //     if (rst_n && dut.state == dut.STATE_FETCH && imem_ack) begin
-    //         $display("[%0t] PC=0x%08x, instr=0x%08x", $time, dut.pc, imem_data);
-    //     end
-    // end
+    // Trace execution for debugging
+    always @(posedge clk) begin
+        if (rst_n && dut.state == dut.STATE_MEM && dwb_cyc_o && !dwb_we_o) begin
+            $display("[LOAD] PC=0x%08x addr=0x%08x funct3=%b data=0x%08x",
+                     dut.pc, dwb_adr_o, dut.funct3, dwb_dat_i);
+        end
+        if (rst_n && dut.state == dut.STATE_WRITEBACK && dut.rd_wen && dut.mem_read) begin
+            $display("[WB_LOAD] PC=0x%08x x%0d <= 0x%08x (mem_data_reg=0x%08x, addr_offset=%b)",
+                     dut.pc, dut.rd_addr, dut.rd_data, dut.mem_data_reg, dut.alu_result_reg[1:0]);
+        end
+        if (rst_n && dut.state == dut.STATE_TRAP) begin
+            $display("[TRAP] PC=0x%08x, cause=0x%08x, val=0x%08x",
+                     dut.trap_pc, dut.trap_cause, dut.trap_val);
+        end
+    end
 endmodule
 '''
 
@@ -195,10 +223,11 @@ def run_test(test_name, tb_file):
     try:
         # Compile
         verilog_name = test_name.replace('-', '_')
-        sim_file = SIM_DIR / f"tb_compliance_{verilog_name}"
+        sim_file = TESTBENCH_DIR / f"tb_compliance_{verilog_name}"
         compile_cmd = [
             IVERILOG,
             "-g2012",
+            "-DSIMULATION",
             f"-I{RTL_DIR}",
             "-o", str(sim_file),
             str(tb_file),
@@ -211,8 +240,8 @@ def run_test(test_name, tb_file):
             print(result.stderr)
             return False
 
-        # Run simulation (set cwd to sim dir so $readmemh can find hex files)
-        result = subprocess.run([VVP, str(sim_file.name)], capture_output=True, text=True, timeout=10, cwd=SIM_DIR)
+        # Run simulation (set cwd to testbench dir so $readmemh can find hex files)
+        result = subprocess.run([VVP, str(sim_file.name)], capture_output=True, text=True, timeout=10, cwd=TESTBENCH_DIR)
 
         # Check result
         if "TEST PASSED" in result.stdout:
@@ -222,6 +251,10 @@ def run_test(test_name, tb_file):
             match = re.search(r'code: (\d+)', result.stdout)
             if match:
                 print(f"  Failed with code: {match.group(1)}")
+            # Print simulator output to help debugging
+            print("--- Simulator stdout ---")
+            print(result.stdout)
+            print("--- End simulator stdout ---")
             return False
         elif "TEST TIMEOUT" in result.stdout:
             print(f"  Timeout")
@@ -241,11 +274,14 @@ def run_test(test_name, tb_file):
 def main():
     """Main test runner"""
 
-    # Test patterns to run
-    test_patterns = [
-        "rv32ui-p-*",  # RV32I base integer tests
-        "rv32um-p-*",  # RV32M multiply/divide tests
-    ]
+    # Test patterns to run (can be overridden with --pattern <pattern>)
+    if len(sys.argv) >= 3 and sys.argv[1] == "--pattern":
+        test_patterns = [sys.argv[2]]
+    else:
+        test_patterns = [
+            "rv32ui-p-*",  # RV32I base integer tests
+            "rv32um-p-*",  # RV32M multiply/divide tests
+        ]
 
     # Find all test files
     test_files = []
@@ -267,7 +303,7 @@ def main():
         print(f"\\nRunning {test_name}...")
 
         # Convert to hex
-        hex_file = SIM_DIR / f"{test_name}.hex"
+        hex_file = TESTBENCH_DIR / f"{test_name}.hex"
         if not convert_elf_to_hex(test_file, hex_file):
             print(f"  Conversion failed")
             failed += 1

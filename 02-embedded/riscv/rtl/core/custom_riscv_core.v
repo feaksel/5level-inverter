@@ -136,6 +136,9 @@ module custom_riscv_core #(
     // M-extension signal from decoder
     wire        is_m;
 
+    // Memory data register (to capture load data)
+    reg [31:0]  mem_data_reg;
+
     // Control signals from decoder
     wire        alu_src_imm;      // ALU source: 0=rs2, 1=immediate
     wire        mem_read;         // Memory read enable (loads)
@@ -168,6 +171,10 @@ module custom_riscv_core #(
 
     // temporary register to capture result from MDU
     reg [31:0]  mdu_result_reg;
+    // pending state to capture MDU outputs across cycles (avoid read-after-nb race)
+    reg [1:0]   mdu_pending;
+    // latch for MDU funct3 (so it doesn't change while MDU is running)
+    reg [2:0]   mdu_funct3;
 
     //==========================================================================
     // CSR and Trap Handling Signals
@@ -232,9 +239,42 @@ module custom_riscv_core #(
     assign dwb_we_o = dwb_we_reg;
     assign dwb_sel_o = dwb_sel_reg;
 
-    assign alu_operand_a = (opcode == `OPCODE_AUIPC) ? pc : rs1_data;
+    // For AUIPC, operand A is PC; for LUI, operand A should be zero
+    assign alu_operand_a = (opcode == `OPCODE_AUIPC) ? pc :
+                           (opcode == `OPCODE_LUI)   ? 32'h0 : rs1_data;
     assign alu_operand_b = alu_src_imm ? immediate : rs2_data;
-    assign rd_data = mem_read ? dwb_dat_i :
+
+    // Load data processing (byte/halfword extraction and sign extension)
+    wire [31:0] load_data_processed;
+    wire [1:0]  load_addr_offset = alu_result_reg[1:0];  // Lower 2 bits of address
+    wire [7:0]  load_byte;
+    wire [15:0] load_halfword;
+    wire        load_sign_bit;
+
+    // Select byte based on address offset (use mem_data_reg captured in STATE_MEM)
+    assign load_byte = (load_addr_offset == 2'b00) ? mem_data_reg[7:0] :
+                       (load_addr_offset == 2'b01) ? mem_data_reg[15:8] :
+                       (load_addr_offset == 2'b10) ? mem_data_reg[23:16] :
+                                                       mem_data_reg[31:24];
+
+    // Select halfword based on address offset
+    assign load_halfword = (load_addr_offset[1] == 1'b0) ? mem_data_reg[15:0] :
+                                                             mem_data_reg[31:16];
+
+    // Determine sign bit for sign extension
+    assign load_sign_bit = (funct3 == `FUNCT3_LB)  ? load_byte[7] :
+                           (funct3 == `FUNCT3_LH)  ? load_halfword[15] :
+                           1'b0;
+
+    // Process load data based on funct3
+    assign load_data_processed =
+        (funct3 == `FUNCT3_LB)  ? {{24{load_sign_bit}}, load_byte} :      // LB: sign-extend byte
+        (funct3 == `FUNCT3_LH)  ? {{16{load_sign_bit}}, load_halfword} :  // LH: sign-extend halfword
+        (funct3 == `FUNCT3_LBU) ? {24'b0, load_byte} :                     // LBU: zero-extend byte
+        (funct3 == `FUNCT3_LHU) ? {16'b0, load_halfword} :                 // LHU: zero-extend halfword
+        mem_data_reg;                                                      // LW: full word
+
+    assign rd_data = mem_read ? load_data_processed :
                      is_system ? csr_rdata :
                      is_jump ? (pc + 4) :      // Return address for JAL/JALR
                      alu_result_reg;
@@ -262,6 +302,8 @@ module custom_riscv_core #(
             dwb_stb_reg <= 1'b0;
             mdu_start <= 1'b0;
             mdu_result_reg <= 32'd0;
+            mdu_pending <= 2'd0;
+            mem_data_reg <= 32'd0;
             trap_entry <= 1'b0;
             trap_return <= 1'b0;
             trap_pc <= 32'h0;
@@ -290,6 +332,9 @@ module custom_riscv_core #(
                         iwb_cyc_reg <= 1'b0;
                         iwb_stb_reg <= 1'b0;
                         state <= STATE_DECODE;
+                        `ifdef SIMULATION
+                        $display("[FETCH] PC=0x%08h instr=0x%08h", pc, iwb_dat_i);
+                        `endif
                     end
                 end
 
@@ -304,7 +349,10 @@ module custom_riscv_core #(
                 STATE_EXECUTE: begin
 
                 // Check for exceptions
-                if (exception_taken) begin
+                    `ifdef SIMULATION
+                    $display("[EXEC] PC=0x%08h instr=0x%08h opcode=0x%02h funct3=%b funct7=0x%02h is_m=%b", pc, instruction, opcode, funct3, funct7, is_m);
+                    `endif
+                    if (exception_taken) begin
                     trap_entry <= 1'b1;
                     trap_pc <= pc;
                     trap_cause <= exception_cause;
@@ -323,11 +371,31 @@ module custom_riscv_core #(
                         // Start pulse lasts one cycle
                         // Start unified MDU
                         mdu_start <= 1'b1;
+                        mdu_funct3 <= funct3;
+                        mdu_pending <= 2'd0;
+                        `ifdef SIMULATION
+                        $display("[CORE] MDU START: pc=0x%08h funct3=%0d rs1=0x%08h rs2=0x%08h", pc, funct3, rs1_data, rs2_data);
+                        `endif
                         state <= STATE_MULDIV;
                     end else begin
                         alu_result_reg <= alu_result;
 
-                        if (mem_read || mem_write) begin
+                        `ifdef SIMULATION
+                        if (funct3 == `FUNCT3_SLL || funct3 == `FUNCT3_SRL_SRA) begin
+                            $display("[ALU] PC=0x%08h funct3=%b rs1=0x%08h rs2_imm=0x%08h result=0x%08h", pc, funct3, rs1_data, alu_operand_b, alu_result);
+                        end
+                        `endif
+
+                        if (opcode == `OPCODE_MISC_MEM) begin
+                            // FENCE / FENCE.I: ensure memory ordering by waiting
+                            // for outstanding data bus cycles to complete
+                            if (!dwb_cyc_reg) begin
+                                state <= STATE_WRITEBACK;
+                            end else begin
+                                // Stay in execute stage until stores complete
+                                state <= STATE_EXECUTE;
+                            end
+                        end else if (mem_read || mem_write) begin
                             state <= STATE_MEM;
                         end else begin
                             state <= STATE_WRITEBACK;
@@ -350,19 +418,34 @@ module custom_riscv_core #(
 
                     // Wait for MDU completion
                     if (mdu_done) begin
-                        // If multiply variants -> select product high/low; else select quotient/remainder
-                        case (funct3)
-                            `FUNCT3_MUL:    mdu_result_reg <= mdu_product[31:0];
-                            `FUNCT3_MULH:   mdu_result_reg <= mdu_product[63:32];
-                            `FUNCT3_MULHSU: mdu_result_reg <= mdu_product[63:32];
-                            `FUNCT3_MULHU:  mdu_result_reg <= mdu_product[63:32];
-                            `FUNCT3_DIV:    mdu_result_reg <= mdu_quotient;
-                            `FUNCT3_DIVU:   mdu_result_reg <= mdu_quotient;
-                            `FUNCT3_REM:    mdu_result_reg <= mdu_remainder;
-                            `FUNCT3_REMU:   mdu_result_reg <= mdu_remainder;
-                            default:        mdu_result_reg <= mdu_product[31:0];
+                        // Pulse seen: wait one cycle for MDU outputs to be stable (avoid non-blocking update race)
+                        mdu_pending <= 2'd1;
+                        state <= STATE_MULDIV;
+                    end else if (mdu_pending == 2'd1) begin
+                        // Capture MDU outputs now (product/quotient/remainder stable)
+                        reg [31:0] mdu_selected_temp;
+                        case (mdu_funct3)
+                            `FUNCT3_MUL:    mdu_selected_temp = mdu_product[31:0];
+                            `FUNCT3_MULH:   mdu_selected_temp = mdu_product[63:32];
+                            `FUNCT3_MULHSU: mdu_selected_temp = mdu_product[63:32];
+                            `FUNCT3_MULHU:  mdu_selected_temp = mdu_product[63:32];
+                            `FUNCT3_DIV:    mdu_selected_temp = mdu_quotient;
+                            `FUNCT3_DIVU:   mdu_selected_temp = mdu_quotient;
+                            `FUNCT3_REM:    mdu_selected_temp = mdu_remainder;
+                            `FUNCT3_REMU:   mdu_selected_temp = mdu_remainder;
+                            default:        mdu_selected_temp = mdu_product[31:0];
                         endcase
+                        mdu_result_reg <= mdu_selected_temp;
+                        // Wait one more cycle to move `mdu_result_reg` into `alu_result_reg` (avoids race)
+                        `ifdef SIMULATION
+                        $display("[CORE] MDU CAPTURE: pc=0x%08h start_funct3=%0d mdu_product=0x%016h mdu_quotient=0x%08h mdu_remainder=0x%08h selected=0x%08h", pc, mdu_funct3, mdu_product, mdu_quotient, mdu_remainder, mdu_selected_temp);
+                        `endif
+                        mdu_pending <= 2'd2;
+                        state <= STATE_MULDIV;
+                    end else if (mdu_pending == 2'd2) begin
+                        // now move to writeback after `mdu_result_reg` is stable
                         alu_result_reg <= mdu_result_reg;
+                        mdu_pending <= 2'd0;
                         state <= STATE_WRITEBACK;
                     end else begin
                         // remain in MULDIV until unit signals done
@@ -377,14 +460,29 @@ module custom_riscv_core #(
                         dwb_adr_reg <= alu_result_reg;  // Address from ALU
                         dwb_we_reg <= mem_write;
 
+                        `ifdef SIMULATION
+                        $display("[CORE] MEM START: PC=0x%08h addr=0x%08h we=%b sel=0b%b dat=0x%08h funct3=%0d", pc, dwb_adr_reg, dwb_we_reg, dwb_sel_reg, dwb_dat_reg, funct3);
+                        `endif
+
                         if (mem_write) begin
-                            dwb_dat_reg <= rs2_data;  // Data to store
-                            // Set byte enables based on funct3
+                            // Replicate store data across all byte lanes for byte/halfword stores
                             case (funct3)
-                                3'b000: dwb_sel_reg <= 4'b0001 << alu_result_reg[1:0];  // SB
-                                3'b001: dwb_sel_reg <= 4'b0011 << {alu_result_reg[1], 1'b0};  // SH
-                                3'b010: dwb_sel_reg <= 4'b1111;  // SW
-                                default: dwb_sel_reg <= 4'b1111;
+                                3'b000: begin  // SB: replicate byte to all lanes
+                                    dwb_dat_reg <= {4{rs2_data[7:0]}};
+                                    dwb_sel_reg <= 4'b0001 << alu_result_reg[1:0];
+                                end
+                                3'b001: begin  // SH: replicate halfword to both lanes
+                                    dwb_dat_reg <= {2{rs2_data[15:0]}};
+                                    dwb_sel_reg <= 4'b0011 << {alu_result_reg[1], 1'b0};
+                                end
+                                3'b010: begin  // SW: full word
+                                    dwb_dat_reg <= rs2_data;
+                                    dwb_sel_reg <= 4'b1111;
+                                end
+                                default: begin
+                                    dwb_dat_reg <= rs2_data;
+                                    dwb_sel_reg <= 4'b1111;
+                                end
                             endcase
                         end else begin
                             dwb_sel_reg <= 4'b1111;  // Full word for loads
@@ -393,6 +491,18 @@ module custom_riscv_core #(
                         if (dwb_ack_i) begin
                             dwb_cyc_reg <= 1'b0;
                             dwb_stb_reg <= 1'b0;
+                            // Capture memory data for loads
+                            if (mem_read) begin
+                                mem_data_reg <= dwb_dat_i;
+                                `ifdef SIMULATION
+                                $display("[CORE] MEM READ ACK: addr=0x%08h dat=0x%08h sel=0b%b funct3=%0d", dwb_adr_reg, dwb_dat_i, dwb_sel_reg, funct3);
+                                `endif
+                            end
+                            if (mem_write) begin
+                                `ifdef SIMULATION
+                                $display("[CORE] MEM WRITE ACK: addr=0x%08h dat=0x%08h sel=0b%b funct3=%0d", dwb_adr_reg, dwb_dat_reg, dwb_sel_reg, funct3);
+                                `endif
+                            end
                             state <= STATE_WRITEBACK;
                         end
                     end else begin
@@ -403,6 +513,12 @@ module custom_riscv_core #(
                 STATE_WRITEBACK: begin
                     // Register write happens via rd_wen signal (combinational)
 
+                    `ifdef SIMULATION
+                    if (rd_wen) begin
+                        $display("[WB] PC=0x%08h rd=x%0d rd_data=0x%08h rd_wen=%b mem_read=%b mem_write=%b alu_result=0x%08h mem_data_reg=0x%08h load_processed=0x%08h", pc, rd_addr, rd_data, rd_wen, mem_read, mem_write, alu_result_reg, mem_data_reg, load_data_processed);
+                    end
+                    `endif
+
                     // Update PC
                     if (is_jump) begin
                         if (opcode == `OPCODE_JAL) begin
@@ -412,13 +528,14 @@ module custom_riscv_core #(
                         end
                     end else if (is_branch) begin
                         // Check branch condition based on funct3
+                        // For unsigned comparisons, use proper unsigned comparison logic
                         case (funct3)
                             `FUNCT3_BEQ:  if (alu_zero) pc <= pc + immediate; else pc <= pc + 4;
                             `FUNCT3_BNE:  if (!alu_zero) pc <= pc + immediate; else pc <= pc + 4;
                             `FUNCT3_BLT:  if (alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
                             `FUNCT3_BGE:  if (!alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
-                            `FUNCT3_BLTU: if (alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
-                            `FUNCT3_BGEU: if (!alu_result[31]) pc <= pc + immediate; else pc <= pc + 4;
+                            `FUNCT3_BLTU: if (rs1_data < rs2_data) pc <= pc + immediate; else pc <= pc + 4;  // Unsigned comparison
+                            `FUNCT3_BGEU: if (rs1_data >= rs2_data) pc <= pc + immediate; else pc <= pc + 4; // Unsigned comparison
                             default: pc <= pc + 4;
                         endcase
                     end else begin
@@ -527,7 +644,9 @@ module custom_riscv_core #(
     exception_unit exc_unit (
         .pc(pc),
         .instruction(instruction),
-        .mem_addr(dwb_adr_reg),
+        .funct3(funct3),
+        // Use combinational ALU result for current instruction address
+        .mem_addr(alu_result),
         .mem_read(mem_read),
         .mem_write(mem_write),
         .bus_error(dwb_err_i),

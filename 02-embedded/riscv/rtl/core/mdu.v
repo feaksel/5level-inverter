@@ -88,12 +88,17 @@ module mdu (
                         b_latched <= b;
 
                         // Decide path
+                        `ifdef SIMULATION
+                        $display("[MDU] START: funct3=%0d a=0x%08h b=0x%08h", funct3, a, b);
+                        $display("[MDU] START-LATCHED: op_latched=%0d a_latched=0x%08h b_latched=0x%08h", op_latched, a_latched, b_latched);
+                        `endif
                         if ( (funct3 == `FUNCT3_MUL) || (funct3 == `FUNCT3_MULH) ||
                              (funct3 == `FUNCT3_MULHSU) || (funct3 == `FUNCT3_MULHU) ) begin
                             // Prepare multiplier (unsigned abs conversion if needed)
                             mul_sign <= ((funct3 == `FUNCT3_MULH) || (funct3 == `FUNCT3_MULHSU)) && a[31];
-                            // Proper signed handling below
-                            multiplicand <= {32'd0, ((funct3 == `FUNCT3_MULH) && a[31]) ? (~a + 1'b1) : a};
+                            // Proper signed handling below - convert operand a to absolute for MULH and MULHSU
+                            multiplicand <= {32'd0, (((funct3 == `FUNCT3_MULH) || (funct3 == `FUNCT3_MULHSU)) && a[31]) ? (~a + 1'b1) : a};
+                            // b is converted to abs only for MULH (both signed)
                             multiplier <= ((funct3 == `FUNCT3_MULH) && b[31]) ? (~b + 1'b1) : b;
                             acc <= 64'd0;
                             mul_count <= 6'd0;
@@ -148,6 +153,9 @@ module mdu (
                         end
                         busy <= 1'b0;
                         done <= 1'b1;
+                        `ifdef SIMULATION
+                        $display("[MDU] MUL DONE: acc=0x%016h product_out=0x%016h op_latched=%0d a_latched=0x%08h b_latched=0x%08h multiplicand=0x%016h multiplier=0x%08h", acc, product, op_latched, a_latched, b_latched, multiplicand, multiplier);
+                        `endif
                         state <= IDLE;
                     end
                 end
@@ -159,6 +167,9 @@ module mdu (
                         remainder <= dividend_shift[63:32];
                         busy <= 1'b0;
                         done <= 1'b1;
+                        `ifdef SIMULATION
+                        $display("[MDU] DIV DONE: quotient=0x%08h remainder=0x%08h, op_latched=%0d", quotient, remainder, op_latched);
+                        `endif
                         state <= IDLE;
                     end else if (div_count < 32) begin
                         // Standard long division: 
