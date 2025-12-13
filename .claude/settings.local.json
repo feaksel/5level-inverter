@@ -24,7 +24,10 @@
       "Bash(tee:*)",
       "Bash(vvp tb_compliance_rv32ui_p_srl:*)",
       "Bash(python3:*)",
-      "Bash(vvp:*)"
+      "Bash(vvp:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

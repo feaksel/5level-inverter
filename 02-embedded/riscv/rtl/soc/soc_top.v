@@ -104,53 +104,45 @@ module soc_top #(
     //==========================================================================
     // CPU (Custom RISC-V Core)
     //==========================================================================
-
-    /**
-     * Custom RV32IM core with Zpec extension.
-     *
-     * The wrapper provides the same Wishbone interface as vexriscv_wrapper,
-     * making this a DROP-IN replacement. Internally, your custom core can
-     * use cmd/rsp or native Wishbone - the wrapper handles conversion.
-     *
-     * TO INTEGRATE YOUR CUSTOM CORE:
-     * 1. Implement custom_riscv_core.v (RV32IM + Zpec)
-     * 2. Implement custom_core_wrapper.v (matches VexRiscv interface)
-     * 3. Add both files to the build system
-     * 4. Synthesize and test!
-     *
-     * Everything else (peripherals, memory, bus) is READY TO GO.
-     */
-
     wire [31:0] cpu_ibus_addr;
-    wire        cpu_ibus_cyc;
+    wire [31:0] cpu_ibus_dat_o; // Not used, CPU ibus is read-only
+    wire [31:0] cpu_ibus_dat_i;
+    wire        cpu_ibus_we;    // Tied low
+    wire [3:0]  cpu_ibus_sel;   // Tied high
     wire        cpu_ibus_stb;
+    wire        cpu_ibus_cyc;
     wire        cpu_ibus_ack;
-    wire [31:0] cpu_ibus_dat;
+    wire        cpu_ibus_err;
 
     wire [31:0] cpu_dbus_addr;
     wire [31:0] cpu_dbus_dat_o;
     wire [31:0] cpu_dbus_dat_i;
     wire        cpu_dbus_we;
     wire [3:0]  cpu_dbus_sel;
-    wire        cpu_dbus_cyc;
     wire        cpu_dbus_stb;
+    wire        cpu_dbus_cyc;
     wire        cpu_dbus_ack;
     wire        cpu_dbus_err;
 
     wire [31:0] cpu_interrupts;
 
-    // CHANGE THIS LINE when you have custom_core_wrapper ready:
-    // For now, this references a placeholder module
+    assign cpu_ibus_we = 1'b0;
+    assign cpu_ibus_sel = 4'hF;
+
     custom_core_wrapper cpu (
         .clk(clk),
         .rst_n(rst_n_sync),
 
         // Instruction bus (Wishbone)
         .ibus_addr(cpu_ibus_addr),
-        .ibus_cyc(cpu_ibus_cyc),
+        .ibus_dat_o(cpu_ibus_dat_o),
+        .ibus_dat_i(cpu_ibus_dat_i),
+        .ibus_we(cpu_ibus_we),
+        .ibus_sel(cpu_ibus_sel),
         .ibus_stb(cpu_ibus_stb),
+        .ibus_cyc(cpu_ibus_cyc),
         .ibus_ack(cpu_ibus_ack),
-        .ibus_dat_i(cpu_ibus_dat),
+        .ibus_err(cpu_ibus_err),
 
         // Data bus (Wishbone)
         .dbus_addr(cpu_dbus_addr),
@@ -158,8 +150,8 @@ module soc_top #(
         .dbus_dat_i(cpu_dbus_dat_i),
         .dbus_we(cpu_dbus_we),
         .dbus_sel(cpu_dbus_sel),
-        .dbus_cyc(cpu_dbus_cyc),
         .dbus_stb(cpu_dbus_stb),
+        .dbus_cyc(cpu_dbus_cyc),
         .dbus_ack(cpu_dbus_ack),
         .dbus_err(cpu_dbus_err),
 
@@ -168,46 +160,64 @@ module soc_top #(
     );
 
     //==========================================================================
-    // Memory: ROM (32 KB)
+    // Wishbone Arbiter (2-to-1)
     //==========================================================================
+    wire [31:0] arbiter_m_wb_addr;
+    wire [31:0] arbiter_m_wb_dat_o;
+    wire [31:0] arbiter_m_wb_dat_i;
+    wire        arbiter_m_wb_we;
+    wire [3:0]  arbiter_m_wb_sel;
+    wire        arbiter_m_wb_stb;
+    wire        arbiter_m_wb_cyc;
+    wire        arbiter_m_wb_ack;
+    wire        arbiter_m_wb_err;
 
-    // ROM is accessed from BOTH instruction bus (ibus) and data bus (dbus)
-    // - ibus: for code fetch
-    // - dbus: for constant data reads (via interconnect)
-    // Simple priority arbiter: ibus has priority
-
-    wire [14:0] rom_addr_dbus;   // From data bus (via interconnect)
-    wire        rom_stb_dbus;    // From data bus
-    wire        rom_ack_dbus;    // To data bus
-
-    wire [31:0] rom_dat_o;
-    wire        rom_ack;
-
-    // Instruction bus request
-    wire rom_req_ibus = cpu_ibus_stb && cpu_ibus_cyc;
-
-    // ROM arbiter: prioritize instruction bus
-    wire [14:0] rom_addr_mux = rom_req_ibus ? cpu_ibus_addr[14:0] : rom_addr_dbus;
-    wire        rom_stb_mux  = rom_req_ibus ? rom_req_ibus : rom_stb_dbus;
-
-    rom_32kb #(
-        .MEM_FILE("firmware/firmware.hex")
-    ) rom (
+    wishbone_arbiter_2x1 arbiter (
         .clk(clk),
-        .addr(rom_addr_mux),
-        .stb(rom_stb_mux),
-        .data_out(rom_dat_o),
-        .ack(rom_ack)
+        .rst_n(rst_n_sync),
+
+        // Slave 0: CPU Instruction Bus (High Priority)
+        .s0_wb_addr(cpu_ibus_addr),
+        .s0_wb_dat_i(cpu_ibus_dat_o),
+        .s0_wb_dat_o(cpu_ibus_dat_i),
+        .s0_wb_we(cpu_ibus_we),
+        .s0_wb_sel(cpu_ibus_sel),
+        .s0_wb_stb(cpu_ibus_stb),
+        .s0_wb_cyc(cpu_ibus_cyc),
+        .s0_wb_ack(cpu_ibus_ack),
+        .s0_wb_err(cpu_ibus_err),
+
+        // Slave 1: CPU Data Bus (Low Priority)
+        .s1_wb_addr(cpu_dbus_addr),
+        .s1_wb_dat_i(cpu_dbus_dat_o),
+        .s1_wb_dat_o(cpu_dbus_dat_i),
+        .s1_wb_we(cpu_dbus_we),
+        .s1_wb_sel(cpu_dbus_sel),
+        .s1_wb_stb(cpu_dbus_stb),
+        .s1_wb_cyc(cpu_dbus_cyc),
+        .s1_wb_ack(cpu_dbus_ack),
+        .s1_wb_err(cpu_dbus_err),
+
+        // Master: To Bus Interconnect
+        .m_wb_addr(arbiter_m_wb_addr),
+        .m_wb_dat_o(arbiter_m_wb_dat_o),
+        .m_wb_dat_i(arbiter_m_wb_dat_i),
+        .m_wb_we(arbiter_m_wb_we),
+        .m_wb_sel(arbiter_m_wb_sel),
+        .m_wb_stb(arbiter_m_wb_stb),
+        .m_wb_cyc(arbiter_m_wb_cyc),
+        .m_wb_ack(arbiter_m_wb_ack),
+        .m_wb_err(arbiter_m_wb_err)
     );
 
-    // Route ack to appropriate bus
-    assign cpu_ibus_dat = rom_dat_o;
-    assign cpu_ibus_ack = rom_req_ibus ? rom_ack : 1'b0;
-    assign rom_ack_dbus = !rom_req_ibus ? rom_ack : 1'b0;
-
     //==========================================================================
-    // Memory: RAM (64 KB)
+    // Memory Subsystem
     //==========================================================================
+    // Slaves from interconnect
+    wire [14:0] rom_addr;
+    wire        rom_stb;
+    wire [31:0] rom_dat_o;
+    wire        rom_ack;
 
     wire [15:0] ram_addr;
     wire [31:0] ram_dat_i;
@@ -217,16 +227,175 @@ module soc_top #(
     wire        ram_stb;
     wire        ram_ack;
 
-    ram_64kb ram (
-        .clk(clk),
-        .addr(ram_addr),
-        .data_in(ram_dat_i),
-        .data_out(ram_dat_o),
-        .we(ram_we),
-        .be(ram_sel),
-        .stb(ram_stb),
-        .ack(ram_ack)
-    );
+`ifdef SIMULATION
+    //--------------------------------------------------------------------------
+    // Behavioral Memory for Simulation
+    //--------------------------------------------------------------------------
+    // 32 KB ROM
+    reg [31:0] rom_mem [0:8191]; // 8192 entries * 4 bytes = 32 KB
+    assign rom_dat_o = rom_mem[rom_addr[14:2]];
+    assign rom_ack = rom_stb; // Combinatorial read
+
+    initial begin
+        $display("SIMULATION: Loading behavioral ROM from firmware/firmware.hex");
+        $readmemh("firmware/firmware.hex", rom_mem);
+    end
+
+    // 64 KB RAM
+    reg [31:0] ram_mem [0:16383]; // 16384 entries * 4 bytes = 64 KB
+    reg [31:0] ram_read_data;
+    assign ram_dat_o = ram_read_data;
+    reg ram_ack_reg;
+    assign ram_ack = ram_ack_reg;
+
+    always @(posedge clk) begin
+        ram_ack_reg <= ram_stb;
+        if (ram_stb) begin
+            if (ram_we) begin
+                if (ram_sel[0]) ram_mem[ram_addr[15:2]][7:0]   <= ram_dat_i[7:0];
+                if (ram_sel[1]) ram_mem[ram_addr[15:2]][15:8]  <= ram_dat_i[15:8];
+                if (ram_sel[2]) ram_mem[ram_addr[15:2]][23:16] <= ram_dat_i[23:16];
+                if (ram_sel[3]) ram_mem[ram_addr[15:2]][31:24] <= ram_dat_i[31:24];
+            end
+            ram_read_data <= ram_mem[ram_addr[15:2]];
+        end
+    end
+
+`else // SYNTHESIS
+    //--------------------------------------------------------------------------
+    // Synthesizable SRAM Macros for SKY130 PDK
+    //--------------------------------------------------------------------------
+    // This implementation creates a 32KB ROM and a 64KB RAM by banking
+    // multiple instances of the sky130_sram_2kbyte_1rw1r_32x512_8 macro.
+    // This is a standard technique for building larger memories.
+
+    // --- 32KB ROM Generation (16 x 2KB macros) ---
+    localparam ROM_NUM_MACROS = 16;
+    wire [31:0] rom_data_from_macros [0:ROM_NUM_MACROS-1];
+    reg  [31:0] rom_data_muxed;
+
+    genvar i;
+    generate
+        for (i = 0; i < ROM_NUM_MACROS; i = i + 1) begin : rom_bank
+            sky130_sram_2kbyte_1rw1r_32x512_8 sram_rom (
+                .VPWR(1'b1), .VGND(1'b0), .vpb(1'b1), .vnb(1'b0), // Power
+                // Port 0 (Unused, tied off for ROM)
+                .clk0(clk),
+                .csb0(1'b1),
+                .web0(1'b1),
+                .wmask0(4'h0),
+                .addr0(9'h0),
+                .din0(32'h0),
+                .dout0(), // Unconnected
+                // Port 1 (Read-only port)
+                .clk1(clk),
+                .csb1(!(rom_stb && (rom_addr[14:11] == i[3:0]))), // Chip select for this macro
+                .addr1(rom_addr[10:2]), // 9-bit address for 512 entries
+                .dout1(rom_data_from_macros[i])
+            );
+        end
+    endgenerate
+
+    // Mux the outputs from the ROM macros
+    always @(*) begin
+        casex (rom_addr[14:11])
+            4'd0:    rom_data_muxed = rom_data_from_macros[0];
+            4'd1:    rom_data_muxed = rom_data_from_macros[1];
+            4'd2:    rom_data_muxed = rom_data_from_macros[2];
+            4'd3:    rom_data_muxed = rom_data_from_macros[3];
+            4'd4:    rom_data_muxed = rom_data_from_macros[4];
+            4'd5:    rom_data_muxed = rom_data_from_macros[5];
+            4'd6:    rom_data_muxed = rom_data_from_macros[6];
+            4'd7:    rom_data_muxed = rom_data_from_macros[7];
+            4'd8:    rom_data_muxed = rom_data_from_macros[8];
+            4'd9:    rom_data_muxed = rom_data_from_macros[9];
+            4'd10:   rom_data_muxed = rom_data_from_macros[10];
+            4'd11:   rom_data_muxed = rom_data_from_macros[11];
+            4'd12:   rom_data_muxed = rom_data_from_macros[12];
+            4'd13:   rom_data_muxed = rom_data_from_macros[13];
+            4'd14:   rom_data_muxed = rom_data_from_macros[14];
+            4'd15:   rom_data_muxed = rom_data_from_macros[15];
+            default: rom_data_muxed = 32'h0;
+        endcase
+    end
+    assign rom_dat_o = rom_data_muxed;
+    assign rom_ack = rom_stb; // Assume 1-cycle latency
+
+
+    // --- 64KB RAM Generation (32 x 2KB macros) ---
+    localparam RAM_NUM_MACROS = 32;
+    wire [31:0] ram_data_from_macros [0:RAM_NUM_MACROS-1];
+    reg  [31:0] ram_data_muxed;
+    reg         ram_ack_reg;
+
+    generate
+        for (i = 0; i < RAM_NUM_MACROS; i = i + 1) begin : ram_bank
+            sky130_sram_2kbyte_1rw1r_32x512_8 sram_ram (
+                .VPWR(1'b1), .VGND(1'b0), .vpb(1'b1), .vnb(1'b0), // Power
+                // Port 0 (Read/Write Port)
+                .clk0(clk),
+                .csb0(!(ram_stb && (ram_addr[15:11] == i[4:0]))), // Chip select
+                .web0(!ram_we),
+                .wmask0(!ram_sel),
+                .addr0(ram_addr[10:2]),
+                .din0(ram_dat_i),
+                .dout0(ram_data_from_macros[i]),
+                // Port 1 (Unused Read-only port, tied off)
+                .clk1(clk),
+                .csb1(1'b1),
+                .addr1(9'h0),
+                .dout1()
+            );
+        end
+    endgenerate
+
+    // Mux the outputs from the RAM macros
+    always @(*) begin
+        casex (ram_addr[15:11])
+             5'd0: ram_data_muxed = ram_data_from_macros[0];
+             5'd1: ram_data_muxed = ram_data_from_macros[1];
+             5'd2: ram_data_muxed = ram_data_from_macros[2];
+             5_d3: ram_data_muxed = ram_data_from_macros[3];
+             5_d4: ram_data_muxed = ram_data_from_macros[4];
+             5'd5: ram_data_muxed = ram_data_from_macros[5];
+             5'd6: ram_data_muxed = ram_data_from_macros[6];
+             5'd7: ram_data_muxed = ram_data_from_macros[7];
+             5'd8: ram_data_muxed = ram_data_from_macros[8];
+             5'd9: ram_data_muxed = ram_data_from_macros[9];
+             5'd10: ram_data_muxed = ram_data_from_macros[10];
+             5'd11: ram_data_muxed = ram_data_from_macros[11];
+             5'd12: ram_data_muxed = ram_data_from_macros[12];
+             5'd13: ram_data_muxed = ram_data_from_macros[13];
+             14: ram_data_muxed = ram_data_from_macros[14];
+             15: ram_data_muxed = ram_data_from_macros[15];
+             16: ram_data_muxed = ram_data_from_macros[16];
+             17: ram_data_muxed = ram_data_from_macros[17];
+             18: ram_data_muxed = ram_data_from_macros[18];
+             19: ram_data_muxed = ram_data_from_macros[19];
+             20: ram_data_muxed = ram_data_from_macros[20];
+             21: ram_data_muxed = ram_data_from_macros[21];
+             22: ram_data_muxed = ram_data_from_macros[22];
+             23: ram_data_muxed = ram_data_from_macros[23];
+             24: ram_data_muxed = ram_data_from_macros[24];
+             25: ram_data_muxed = ram_data_from_macros[25];
+             26: ram_data_muxed = ram_data_from_macros[26];
+             27: ram_data_muxed = ram_data_from_macros[27];
+             28: ram_data_muxed = ram_data_from_macros[28];
+             29: ram_data_muxed = ram_data_from_macros[29];
+             30: ram_data_muxed = ram_data_from_macros[30];
+             31: ram_data_muxed = ram_data_from_macros[31];
+            default: ram_data_muxed = 32'h0;
+        endcase
+    end
+    assign ram_dat_o = ram_data_muxed;
+
+    // The SRAM macro has a 1-cycle read latency.
+    always @(posedge clk) begin
+        ram_ack_reg <= ram_stb;
+    end
+    assign ram_ack = ram_ack_reg;
+
+`endif
 
     //==========================================================================
     // Peripherals: PWM Accelerator
@@ -422,22 +591,22 @@ module soc_top #(
         .clk(clk),
         .rst_n(rst_n_sync),
 
-        // Master (CPU data bus)
-        .m_wb_addr(cpu_dbus_addr),
-        .m_wb_dat_i(cpu_dbus_dat_o),
-        .m_wb_dat_o(cpu_dbus_dat_i),
-        .m_wb_we(cpu_dbus_we),
-        .m_wb_sel(cpu_dbus_sel),
-        .m_wb_stb(cpu_dbus_stb),
-        .m_wb_cyc(cpu_dbus_cyc),
-        .m_wb_ack(cpu_dbus_ack),
-        .m_wb_err(cpu_dbus_err),
+        // Master (from Arbiter)
+        .m_wb_addr(arbiter_m_wb_addr),
+        .m_wb_dat_i(arbiter_m_wb_dat_o),
+        .m_wb_dat_o(arbiter_m_wb_dat_i),
+        .m_wb_we(arbiter_m_wb_we),
+        .m_wb_sel(arbiter_m_wb_sel),
+        .m_wb_stb(arbiter_m_wb_stb),
+        .m_wb_cyc(arbiter_m_wb_cyc),
+        .m_wb_ack(arbiter_m_wb_ack),
+        .m_wb_err(arbiter_m_wb_err),
 
-        // Slave: ROM (data bus access only)
-        .rom_addr(rom_addr_dbus),
-        .rom_stb(rom_stb_dbus),
+        // Slave: ROM
+        .rom_addr(rom_addr),
+        .rom_stb(rom_stb),
         .rom_dat_o(rom_dat_o),
-        .rom_ack(rom_ack_dbus),
+        .rom_ack(rom_ack),
 
         // Slave: RAM
         .ram_addr(ram_addr),
@@ -447,6 +616,7 @@ module soc_top #(
         .ram_sel(ram_sel),
         .ram_stb(ram_stb),
         .ram_ack(ram_ack),
+
 
         // Slave: PWM
         .pwm_addr(pwm_addr),
