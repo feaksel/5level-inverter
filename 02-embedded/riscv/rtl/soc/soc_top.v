@@ -123,11 +123,16 @@ module soc_top #(
 
     wire [31:0] cpu_interrupts;
 
+<<<<<<< HEAD
     // Tie off unused instruction bus signals (ibus is read-only)
     assign cpu_ibus_we = 1'b0;
     assign cpu_ibus_sel = 4'hF;
     assign cpu_ibus_dat_o = 32'h0;  // Not used
     assign cpu_ibus_err = 1'b0;      // Not supported by wrapper
+=======
+    assign cpu_ibus_we = 1'b0;
+    assign cpu_ibus_sel = 4'hF;
+>>>>>>> 014932e0bf99694e514378b62e54c0b8b3600767
 
     custom_core_wrapper cpu (
         .clk(clk),
@@ -135,10 +140,21 @@ module soc_top #(
 
         // Instruction bus (Wishbone) - Read-only
         .ibus_addr(cpu_ibus_addr),
+<<<<<<< HEAD
         .ibus_dat_i(cpu_ibus_dat_i),
         .ibus_stb(cpu_ibus_stb),
         .ibus_cyc(cpu_ibus_cyc),
         .ibus_ack(cpu_ibus_ack),
+=======
+        .ibus_dat_o(cpu_ibus_dat_o),
+        .ibus_dat_i(cpu_ibus_dat_i),
+        .ibus_we(cpu_ibus_we),
+        .ibus_sel(cpu_ibus_sel),
+        .ibus_stb(cpu_ibus_stb),
+        .ibus_cyc(cpu_ibus_cyc),
+        .ibus_ack(cpu_ibus_ack),
+        .ibus_err(cpu_ibus_err),
+>>>>>>> 014932e0bf99694e514378b62e54c0b8b3600767
 
         // Data bus (Wishbone)
         .dbus_addr(cpu_dbus_addr),

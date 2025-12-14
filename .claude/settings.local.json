@@ -27,11 +27,15 @@
       "Bash(vvp:*)",
       "Bash(wc:*)",
       "Bash(ls:*)",
+<<<<<<< HEAD
       "Bash(grep:*)",
       "Bash(./run_soc_top_test.sh:*)",
       "Bash(/opt/riscv/bin/riscv32-unknown-elf-gcc:*)",
       "Bash(/opt/riscv/bin/riscv32-unknown-elf-objcopy:*)",
       "Bash(./run_single_char_test.sh:*)"
+=======
+      "Bash(grep:*)"
+>>>>>>> 014932e0bf99694e514378b62e54c0b8b3600767
     ],
     "deny": [],
     "ask": []
