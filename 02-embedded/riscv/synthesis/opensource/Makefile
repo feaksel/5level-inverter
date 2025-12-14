@@ -17,6 +17,7 @@ RTL_SOURCES = \
 	$(CORE_DIR)/regfile.v \
 	$(CORE_DIR)/alu.v \
 	$(CORE_DIR)/decoder.v \
+	$(CORE_DIR)/zpec_unit.v \
 	$(CORE_DIR)/custom_riscv_core.v \
 	$(CORE_DIR)/custom_core_wrapper.v
 
@@ -44,6 +45,7 @@ VERILATOR = verilator
 # Flags
 IVERILOG_FLAGS = -g2012 -Wall
 YOSYS_FLAGS =
+YOSYS_DEFINES =
 VERILATOR_FLAGS = --lint-only --timing -Wall
 
 #===============================================================================
@@ -134,11 +136,16 @@ test: sim-regfile sim-alu sim-decoder
 synth: $(BUILD_DIR) $(REPORTS_DIR)
 	@echo "========================================="
 	@echo "Synthesizing with Yosys"
+	@echo "Defines: $(YOSYS_DEFINES)"
 	@echo "========================================="
-	$(YOSYS) synth.ys
+	$(YOSYS) -p "read_verilog -sv $(YOSYS_DEFINES) $(RTL_SOURCES)" synth.ys
 	@echo ""
 	@echo "Synthesis complete! Check reports/synthesis.txt"
 	@echo ""
+
+.PHONY: synth_zpec
+synth_zpec:
+	$(MAKE) synth YOSYS_DEFINES="-D ZPEC_ENABLED"
 
 #===============================================================================
 # Lint checking (Verilator)
@@ -200,7 +207,8 @@ help:
 	@echo "    make test         - Run all unit tests"
 	@echo ""
 	@echo "  Synthesis:"
-	@echo "    make synth        - Synthesize with Yosys"
+	@echo "    make synth        - Synthesize with Yosys (standard RV32IM core)"
+	@echo "    make synth_zpec   - Synthesize with Yosys (RV32IM + ZPEC extension)"
 	@echo "    make lint         - Run Verilator lint checking"
 	@echo ""
 	@echo "  Waveforms:"
@@ -216,5 +224,9 @@ help:
 	@echo "Quick start:"
 	@echo "  1. make test         # Run all unit tests"
 	@echo "  2. make lint         # Check for issues"
-	@echo "  3. make synth        # Synthesize design"
+	@echo "  3. make synth        # Synthesize standard core"
 	@echo ""
+	@echo "To synthesize the core with the ZPEC extension:"
+	@echo "  make synth_zpec"
+	@echo ""
+

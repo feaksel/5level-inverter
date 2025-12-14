@@ -79,25 +79,61 @@ module sigma_delta_adc #(
     // Sigma-Delta ADC Channels (4× instantiation)
     //==========================================================================
 
-    genvar i;
-    generate
-        for (i = 0; i < 4; i = i + 1) begin : adc_channels
-            sigma_delta_channel #(
-                .OSR(OSR),
-                .CIC_ORDER(CIC_ORDER)
-            ) adc_ch (
-                .clk(clk),
-                .rst_n(rst_n),
-                .enable(enable),
-                .comp_in(comp_in[i]),
-                .dac_out(dac_out[i]),
-                .adc_data(i == 0 ? adc_ch0 :
-                          i == 1 ? adc_ch1 :
-                          i == 2 ? adc_ch2 : adc_ch3),
-                .data_valid(adc_data_valid[i])
-            );
-        end
-    endgenerate
+    // Channel 0
+    sigma_delta_channel #(
+        .OSR(OSR),
+        .CIC_ORDER(CIC_ORDER)
+    ) adc_ch0_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(enable),
+        .comp_in(comp_in[0]),
+        .dac_out(dac_out[0]),
+        .adc_data(adc_ch0),
+        .data_valid(adc_data_valid[0])
+    );
+
+    // Channel 1
+    sigma_delta_channel #(
+        .OSR(OSR),
+        .CIC_ORDER(CIC_ORDER)
+    ) adc_ch1_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(enable),
+        .comp_in(comp_in[1]),
+        .dac_out(dac_out[1]),
+        .adc_data(adc_ch1),
+        .data_valid(adc_data_valid[1])
+    );
+
+    // Channel 2
+    sigma_delta_channel #(
+        .OSR(OSR),
+        .CIC_ORDER(CIC_ORDER)
+    ) adc_ch2_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(enable),
+        .comp_in(comp_in[2]),
+        .dac_out(dac_out[2]),
+        .adc_data(adc_ch2),
+        .data_valid(adc_data_valid[2])
+    );
+
+    // Channel 3
+    sigma_delta_channel #(
+        .OSR(OSR),
+        .CIC_ORDER(CIC_ORDER)
+    ) adc_ch3_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(enable),
+        .comp_in(comp_in[3]),
+        .dac_out(dac_out[3]),
+        .adc_data(adc_ch3),
+        .data_valid(adc_data_valid[3])
+    );
 
     //==========================================================================
     // Data Capture and Interrupt Generation

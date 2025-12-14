@@ -2343,3 +2343,93 @@ This guide provides everything you need to take your RISC-V SoC from RTL to GDSI
 5. Write report per Section 13.2
 
 **End of Synthesis Strategy Guide**
+
+---
+## 16. Action Plan: From Core Compliance to GDSII
+
+This plan operationalizes the strategies outlined in this document. Now that your core is nearly compliance-complete, follow these phases to progress to a final GDSII layout.
+
+### Phase 1: Core Finalization & RTL Freeze (1-2 Days)
+
+**Goal:** Solidify the RISC-V core, document its state, and ensure it's ready for SoC integration.
+
+-   **[ ] Action 1.1: Document Compliance Status**
+    -   Create a new document in `docs/` named `COMPLIANCE_REPORT.md`.
+    -   In this file, list the 98% of tests that pass.
+    -   Clearly document the specific tests that fail. For each failure, provide a brief explanation of why it's considered an acceptable edge case for this project's scope.
+    -   **Reference:** Section 11 (Verification Strategy)
+
+-   **[ ] Action 1.2: Core RTL Code Review**
+    -   Perform a final review of your core's RTL (`regfile.v`, `alu.v`, `decoder.v`, `control_fsm.v`).
+    -   Check for synthesis-friendliness: synchronous logic, proper reset handling (asynchronous with synchronizer), no latches.
+    -   Run a final lint check using Verilator as described in the guide.
+    -   **Reference:** Section 4.3 (Verification Checklist), Section 7.2 (Reset Strategy)
+
+-   **[ ] Action 1.3: Freeze the Core**
+    -   Commit all changes with a clear message like `feat(core): Finalize RTL for v1.0, ready for SoC integration`.
+    -   Create a git tag: `git tag -a v1.0-core-freeze -m "Core RTL is frozen. Next step: SoC integration."`
+    -   From this point, avoid making changes to the core logic unless a critical bug is found during SoC verification.
+
+### Phase 2: SoC Integration & Verification (3-5 Days)
+
+**Goal:** Integrate the core into a full System-on-Chip with peripherals and verify the complete system in simulation.
+
+-   **[ ] Action 2.1: Define SoC Architecture**
+    -   Based on **Section 2.1 (Complete SoC Structure)**, decide on the final set of peripherals (e.g., UART, GPIO, Timer, PWM).
+    -   Update the top-level file `rtl/soc/soc_top.v` to instantiate the core and all required peripherals.
+    -   Connect all components using the provided Wishbone interconnect.
+    -   Finalize the memory map in `firmware/memory_map.h`.
+
+-   **[ ] Action 2.2: Implement Memory Strategy**
+    -   Follow **Section 6.3 (Practical Approach for Homework)**.
+    -   Use `SIMULATION` and `SYNTHESIS` conditional compilation flags in `soc_top.v` to switch between behavioral memory models (for home simulation) and placeholders for SRAM macros (for synthesis).
+
+-   **[ ] Action 2.3: Full SoC Verification**
+    -   Develop a comprehensive SoC-level test program in assembly or C (similar to **Section 4.4** but more extensive). This test should:
+        -   Initialize all peripherals.
+        -   Write to the UART and check for expected output.
+        -   Toggle GPIO pins and read them back.
+        -   Use the timer to create a delay.
+        -   Run a simple algorithm (e.g., factorial) on the core to ensure it still works.
+    -   Simulate the full SoC with this program at home using Icarus Verilog. Debug any integration issues.
+    -   **Reference:** Section 4.2 (Daily Development Cycle), Section 11 (Verification Strategy)
+
+### Phase 3: Synthesis (RTL-to-Netlist) at School (1 Day)
+
+**Goal:** Synthesize your design into a gate-level netlist using Cadence Genus.
+
+-   **[ ] Action 3.1: Prepare for School Visit**
+    -   Ensure your project is clean and all verification passes.
+    -   Push your final code to a remote repository or copy it to a USB drive.
+    -   Decide whether you will attempt **Option A (CPU-Only)** first as a backup, or go directly for **Option C (Full SoC)**, as per **Section 3.3**. It is highly recommended to do the safe CPU-only version first.
+
+-   **[ ] Action 3.2: Execute Synthesis**
+    -   At the school lab, set up the environment (**Section 5.1**) and technology library (**Section 5.2**).
+    -   Use the provided TCL scripts (`scripts/synthesize_cpu.tcl` or `scripts/synthesize_soc.tcl`) as a template. You will need to confirm the exact library and LEF file paths from your TA.
+    -   Run Genus and generate the netlist and reports.
+    -   **Reference:** Section 5.3 (Complete Genus Synthesis Flow)
+
+-   **[ ] Action 3.3: Analyze and Iterate**
+    -   Carefully review the timing, area, and power reports.
+    -   If you have timing violations (negative slack), apply the techniques in **Section 9.3 (Fixing Common Issues)**. This may involve adjusting the clock period in your constraints file or, in a worst-case scenario, modifying the RTL.
+    -   Your goal is to achieve positive timing slack.
+
+### Phase 4: Physical Design (Netlist-to-GDSII) at School (1 Day)
+
+**Goal:** Create the final physical layout of your chip using Cadence Innovus.
+
+-   **[ ] Action 4.1: Execute Place & Route**
+    -   Once synthesis is successful and timing is met, proceed to P&R.
+    -   Use the `scripts/place_route.tcl` script as a template. Again, confirm paths and settings with your TA.
+    -   Run the script in Innovus. This process will perform floorplanning, placement, clock tree synthesis, and routing.
+    -   **Reference:** Section 10.2 (Complete P&R Script)
+
+-   **[ ] Action 4.2: Final Sign-off Verification**
+    -   After P&R completes, Innovus will run final verification checks (DRC, LVS).
+    -   Review the post-P&R timing report to ensure timing is still met after accounting for real wire delays.
+    -   If there are issues, use the troubleshooting tips in **Section 10.3**.
+
+-   **[ ] Action 4.3: Generate GDSII**
+    -   The final step of the P&R script is `streamOut`, which generates the `your_design.gds` file.
+    -   Backup this file securely. This is the primary deliverable for your project.
+

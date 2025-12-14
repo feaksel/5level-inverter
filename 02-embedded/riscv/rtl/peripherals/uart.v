@@ -139,10 +139,12 @@ module uart #(
                         tx_state <= TX_DATA;
                         tx_baud_counter <= 16'd0;
                         tx_bit_counter <= 3'd0;
+                        uart_tx <= tx_shift_reg[0];  // Set first data bit
                     end
                 end
 
                 TX_DATA: begin
+                    // Set uart_tx to current bit every cycle (holds value stable)
                     uart_tx <= tx_shift_reg[0];
                     tx_baud_counter <= tx_baud_counter + 1;
 
@@ -154,6 +156,8 @@ module uart #(
                         if (tx_bit_counter == 7) begin
                             tx_state <= TX_STOP;
                         end
+                        // Note: uart_tx is set every cycle to tx_shift_reg[0]
+                        // After shift, next bit is automatically in position [0]
                     end
                 end
 
@@ -321,7 +325,9 @@ module uart #(
                         rx_overrun <= 1'b0;   // Clear errors
                         frame_error <= 1'b0;
                     end
-                    6'h01: wb_dat_o <= {28'd0, frame_error, rx_overrun, tx_empty, rx_ready};  // STATUS
+                    6'h01: begin  // STATUS
+                        wb_dat_o <= {28'd0, frame_error, rx_overrun, tx_empty, rx_ready};
+                    end
                     6'h02: wb_dat_o <= {29'd0, rx_int_en, tx_enable, rx_enable};  // CTRL
                     6'h03: wb_dat_o <= {16'd0, baud_div};  // BAUD_DIV
                     default: wb_dat_o <= 32'h0;

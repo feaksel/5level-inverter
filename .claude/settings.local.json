@@ -24,7 +24,14 @@
       "Bash(tee:*)",
       "Bash(vvp tb_compliance_rv32ui_p_srl:*)",
       "Bash(python3:*)",
-      "Bash(vvp:*)"
+      "Bash(vvp:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(./run_soc_top_test.sh:*)",
+      "Bash(/opt/riscv/bin/riscv32-unknown-elf-gcc:*)",
+      "Bash(/opt/riscv/bin/riscv32-unknown-elf-objcopy:*)",
+      "Bash(./run_single_char_test.sh:*)"
     ],
     "deny": [],
     "ask": []

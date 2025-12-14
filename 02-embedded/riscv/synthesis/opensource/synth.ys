@@ -4,12 +4,7 @@
 # Output: Gate-level netlist (technology-independent)
 #===============================================================================
 
-# Read Verilog files
-read_verilog -sv ../../rtl/core/regfile.v
-read_verilog -sv ../../rtl/core/alu.v
-read_verilog -sv ../../rtl/core/decoder.v
-read_verilog -sv ../../rtl/core/custom_riscv_core.v
-read_verilog -sv ../../rtl/core/custom_core_wrapper.v
+# Verilog files are read from the Makefile
 
 # Hierarchy (top module)
 hierarchy -check -top custom_core_wrapper

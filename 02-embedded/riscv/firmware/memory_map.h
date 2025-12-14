@@ -59,19 +59,15 @@
 //=============================================================================
 
 typedef volatile struct {
-    uint32_t CTRL;          // 0x00: Control register
-    uint32_t PERIOD;        // 0x04: PWM period
-    uint32_t DEADTIME;      // 0x08: Dead-time (nanoseconds)
-    uint32_t reserved0;     // 0x0C: Reserved
-    uint32_t DUTY_CH0;      // 0x10: Channel 0 duty cycle
-    uint32_t DUTY_CH1;      // 0x14: Channel 1 duty cycle
-    uint32_t DUTY_CH2;      // 0x18: Channel 2 duty cycle
-    uint32_t DUTY_CH3;      // 0x1C: Channel 3 duty cycle
-    uint32_t DUTY_CH4;      // 0x20: Channel 4 duty cycle
-    uint32_t DUTY_CH5;      // 0x24: Channel 5 duty cycle
-    uint32_t DUTY_CH6;      // 0x28: Channel 6 duty cycle
-    uint32_t DUTY_CH7;      // 0x2C: Channel 7 duty cycle
-    uint32_t STATUS;        // 0x30: Status register
+    uint32_t CTRL;          // 0x00: Control register (bit 0: enable, bit 1: mode)
+    uint32_t FREQ_DIV;      // 0x04: Carrier frequency divider
+    uint32_t MOD_INDEX;     // 0x08: Modulation index (0-65535 = 0-1.0)
+    uint32_t SINE_PHASE;    // 0x0C: Sine phase accumulator
+    uint32_t SINE_FREQ;     // 0x10: Sine frequency control
+    uint32_t DEADTIME;      // 0x14: Dead-time in clock cycles
+    uint32_t STATUS;        // 0x18: Status register (read-only)
+    uint32_t PWM_OUT;       // 0x1C: Current PWM output state (read-only)
+    uint32_t CPU_REFERENCE; // 0x20: CPU-provided reference for manual mode
 } pwm_regs_t;
 
 #define PWM ((pwm_regs_t*)PWM_BASE)

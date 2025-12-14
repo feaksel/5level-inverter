@@ -53,6 +53,7 @@ Build/
 *.su
 *.idb
 *.pdb
+*.vcd
 
 # STM32 specific
 *.d
